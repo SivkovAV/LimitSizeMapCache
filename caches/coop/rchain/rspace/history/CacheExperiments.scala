@@ -67,66 +67,7 @@ object CacheExperiments {
     caches.map(cache => calculateCacheWorkTime(cache, queue))
   }
 
-  def useLineChartTemplate(dataStringWith2DArray: String): String = {
-    s"""
-       |  <html>
-       |  <head>
-       |    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-       |    <script type="text/javascript">
-       |      google.charts.load('current', {'packages':['corechart']});
-       |      google.charts.setOnLoadCallback(drawChart);
-       |      function drawChart() {
-       |        var data = google.visualization.arrayToDataTable($dataStringWith2DArray);
-       |        var options = {
-       |          title: 'Caches compare',
-       |          curveType: 'function',
-       |          legend: { position: 'bottom' }
-       |        };
-       |        var chart = new google.visualization.LineChart(document.getElementById('curve_chart'));
-       |        chart.draw(data, options);
-       |      }
-       |      window.onload = drawChart;
-       |      window.onresize = drawChart;
-       |    </script>
-       |  </head>
-       |  <body>
-       |    <div id="curve_chart" style="width: 100%; height: 100%"></div>
-       |  </body>
-       |</html>
-       |""".stripMargin
-  }
-
-  def useBarChartTemplate(dataStringWith2DArray: String): String = {
-    s"""
-       |<html>
-       |  <head>
-       |    <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
-       |    <script type="text/javascript">
-       |      google.charts.load('current', {'packages':['bar']});
-       |      google.charts.setOnLoadCallback(drawChart);
-       |      function drawChart() {
-       |        var data = google.visualization.arrayToDataTable($dataStringWith2DArray);
-       |        var options = {
-       |          chart: {
-       |            title: 'Caches compares',
-       |            subtitle: 'work time - nanoseconds',
-       |          }
-       |        };
-       |        var chart = new google.charts.Bar(document.getElementById('columnchart_material'));
-       |        chart.draw(data, google.charts.Bar.convertOptions(options));
-       |      }
-       |      window.onload = drawChart;
-       |      window.onresize = drawChart;
-       |    </script>
-       |  </head>
-       |  <body>
-       |    <div id="columnchart_material" style="width: 100%; height: 100%;"></div>
-       |  </body>
-       |</html>
-       |""".stripMargin
-  }
-
-  def writeGoogleVisualizationFile(fileNamePostfix: String, htmlTemplate: String =>String,
+  def writeGoogleVisualizationFile(fileNamePostfix: String, googleVisualizationTemplate: GoogleVisualizationTemplate,
                                    resultFileDir: String, resultFileName: String,
                                    caches: List[TrieMapTestTrait], periods: List[List[Long]]): Unit = {
     val resultFilePath = List(resultFileDir, "/", resultFileName, fileNamePostfix).mkString
@@ -139,7 +80,7 @@ object CacheExperiments {
     val chartData = (labels.mkString("[", ",", "]") :: chartSeries).mkString("[", ",", "]")
 
     val printWriter = new PrintWriter(new File(resultFilePath))
-    printWriter.write(htmlTemplate(chartData))
+    printWriter.write(googleVisualizationTemplate.html(chartData))
     printWriter.close()
 
     print(s"Results was saved by path $resultFilePath\n")
@@ -147,14 +88,14 @@ object CacheExperiments {
 
   def writeLineChartFile(resultFileDir: String, resultFileName: String,
                          caches: List[TrieMapTestTrait], periods: List[List[Long]]): Unit = {
-    writeGoogleVisualizationFile("_lineChart.html", useLineChartTemplate,
+    writeGoogleVisualizationFile("_lineChart.html", new LineChartTemplate,
       resultFileDir, resultFileName, caches, periods)
   }
 
 
   def writeBarChartFile(resultFileDir: String, resultFileName: String,
                         caches: List[TrieMapTestTrait], periods: List[List[Long]]): Unit = {
-    writeGoogleVisualizationFile("_barChart.html", useBarChartTemplate,
+    writeGoogleVisualizationFile("_barChart.html", new BarChartTemplate,
       resultFileDir, resultFileName, caches, periods)
   }
 
