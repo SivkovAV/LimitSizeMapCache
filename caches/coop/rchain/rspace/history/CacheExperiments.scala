@@ -6,7 +6,7 @@ import java.security.MessageDigest
 
 
 object CacheExperiments {
-  sealed trait TrieMapTestTrait extends Thread {
+  sealed trait TrieMapTestTrait {
     val name: String
 
     def get(key: Array[Byte]): Option[Int]
