@@ -41,29 +41,29 @@ object CacheExperiments {
     override def set(key: Array[Byte], value: Int): Unit = cache(key) = value
   }
 
-  sealed trait TriaMapEvent {
+  sealed trait TrieMapEvent {
     val key: Array[Byte]
   }
 
-  case class GetValue(override val key: Array[Byte]) extends TriaMapEvent
+  case class GetValue(override val key: Array[Byte]) extends TrieMapEvent
 
-  case class SetValue(override val key: Array[Byte], value: Int) extends TriaMapEvent
+  case class SetValue(override val key: Array[Byte], value: Int) extends TrieMapEvent
 
-  def processEventsQueue(cache: TrieMapTestTrait, queue: List[TriaMapEvent]): Unit = {
+  def processEventsQueue(cache: TrieMapTestTrait, queue: List[TrieMapEvent]): Unit = {
     queue.foreach {
       case GetValue(key) => cache.get(key)
       case SetValue(key, value) => cache.set(key, value)
     }
   }
 
-  def calculateCacheWorkTime(cache: TrieMapTestTrait, queue: List[TriaMapEvent]): Long = {
+  def calculateCacheWorkTime(cache: TrieMapTestTrait, queue: List[TrieMapEvent]): Long = {
     val beginTime = System.nanoTime
     processEventsQueue(cache, queue)
     System.nanoTime - beginTime
   }
 
   def calculateCachesWorkTime(caches: List[TrieMapTestTrait],
-                              queue: List[TriaMapEvent]): List[Long] = {
+                              queue: List[TrieMapEvent]): List[Long] = {
     caches.map(cache => calculateCacheWorkTime(cache, queue))
   }
 
