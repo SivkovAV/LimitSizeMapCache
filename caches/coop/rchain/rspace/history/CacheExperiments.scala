@@ -162,10 +162,10 @@ object CacheExperiments {
   }
 
   def main(args: Array[String]): Unit = {
-    val resultFileDir = "./tmp"
+    val resultDir = "./resultHTML"
     val experimentCount = 20
-    testReadManyOldItemsOnly(experimentCount, resultFileDir, "cachesCompare_readManyOld")
-    testReadOldItemsOnly(    experimentCount, resultFileDir, "cachesCompare_readOld")
-    testAddNewItemsOnly(     experimentCount, resultFileDir, "cachesCompare_writeNew")
+    testReadManyOldItemsOnly(experimentCount, resultDir, "cachesCompare_readManyOld")
+    testReadOldItemsOnly(    experimentCount, resultDir, "cachesCompare_readOld")
+    testAddNewItemsOnly(     experimentCount, resultDir, "cachesCompare_writeNew")
   }
 }
