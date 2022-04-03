@@ -3,6 +3,9 @@ package coop.rchain.rspace.history
 import java.io.{File, PrintWriter}
 import scala.collection.concurrent.TrieMap
 import java.security.MessageDigest
+import scala.concurrent.ExecutionContext.Implicits.global
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 
 object CacheExperiments {
@@ -99,7 +102,7 @@ object CacheExperiments {
       resultFileDir, resultFileName, caches, periods)
   }
 
-  def sha256(value: Int) = {
+  def sha256(value: Int): Array[Byte] = {
     MessageDigest.getInstance("sha-256").digest(BigInt(value).toByteArray)
   }
 
@@ -120,9 +123,15 @@ object CacheExperiments {
     List(triaMap1, triaMap2, triaMap3)
   }
 
-  def repeat(experimentCount: Int, process: Unit => List[Long]) = List.fill(experimentCount)(process())
+  def repeat(multiThreadMode: Boolean, experimentCount: Int, process: Unit => List[Long]): List[List[Long]] = {
+    if (multiThreadMode) {
+      List.fill(experimentCount)(Future{process()}).map(f => Await.result(f, 1000.seconds))
+    }
+    else List.fill(experimentCount)(process())
+  }
 
-  def testReadManyOldItemsOnly(experimentCount: Int, resultFileDir: String, resultFileName: String): Unit = {
+  def testReadManyOldItemsOnly(multiThreadMode: Boolean, experimentCount: Int,
+                               resultFileDir: String, resultFileName: String): Unit = {
     println("testReadManyOldItemsOnly")
     val limitTriaMapSize = 1000
     val scale = 1000
@@ -132,12 +141,13 @@ object CacheExperiments {
 
     // setup cache data
     calculateCachesWorkTime(caches, prepareSetEvents(ItemsCount))
-    val periods = repeat(experimentCount, Unit => {calculateCachesWorkTime(caches, queue)})
+    val periods = repeat(multiThreadMode, experimentCount, Unit => {calculateCachesWorkTime(caches, queue)})
     writeLineChartFile(resultFileDir, resultFileName, caches, periods)
     //writeBarChartFile(resultFileDir, resultFileName, caches, periods)
   }
 
-  def testReadOldItemsOnly(experimentCount: Int, resultFileDir: String, resultFileName: String): Unit = {
+  def testReadOldItemsOnly(multiThreadMode: Boolean, experimentCount: Int,
+                           resultFileDir: String, resultFileName: String): Unit = {
     println("testReadOldItemsOnly")
     val limitTriaMapSize = 1000
     val scale = 1
@@ -147,25 +157,27 @@ object CacheExperiments {
 
     // setup cache data
     calculateCachesWorkTime(caches, prepareSetEvents(ItemsCount))
-    val periods = repeat(experimentCount, Unit => {calculateCachesWorkTime(caches, queue)})
+    val periods = repeat(multiThreadMode, experimentCount, Unit => {calculateCachesWorkTime(caches, queue)})
     writeLineChartFile(resultFileDir, resultFileName, caches, periods)
     //writeBarChartFile(resultFileDir, resultFileName, caches, periods)
   }
 
-  def testAddNewItemsOnly(experimentCount: Int, resultFileDir: String, resultFileName: String): Unit = {
+  def testAddNewItemsOnly(multiThreadMode: Boolean, experimentCount: Int,
+                          resultFileDir: String, resultFileName: String): Unit = {
     println("testAddNewItemsOnly")
     val limitTriaMapSize = 1000
     val caches = prepareCaches(limitTriaMapSize)
-    val periods = repeat(experimentCount, Unit => {calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize))})
+    val periods = repeat(multiThreadMode, experimentCount, Unit => {calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize))})
     writeLineChartFile(resultFileDir, resultFileName, caches, periods)
     //writeBarChartFile(resultFileDir, resultFileName, caches, periods)
   }
 
   def main(args: Array[String]): Unit = {
     val resultDir = "./resultHTML"
-    val experimentCount = 20
-    testReadManyOldItemsOnly(experimentCount, resultDir, "cachesCompare_readManyOld")
-    testReadOldItemsOnly(    experimentCount, resultDir, "cachesCompare_readOld")
-    testAddNewItemsOnly(     experimentCount, resultDir, "cachesCompare_writeNew")
+    val experimentCount = 5
+    val multiThreadMode = false
+    testReadManyOldItemsOnly(multiThreadMode, experimentCount, resultDir, "cachesCompare_readManyOld")
+    testReadOldItemsOnly(    multiThreadMode, experimentCount, resultDir, "cachesCompare_readOld")
+    testAddNewItemsOnly(     multiThreadMode, experimentCount, resultDir, "cachesCompare_writeNew")
   }
 }
