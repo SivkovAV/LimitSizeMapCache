@@ -155,7 +155,7 @@ object CacheExperiments {
   def testAddNewItemsOnly(experimentCount: Int, resultFileDir: String, resultFileName: String): Unit = {
     println("testAddNewItemsOnly")
     val limitTriaMapSize = 1000
-    val caches = prepareCaches(limitTriaMapSize)p
+    val caches = prepareCaches(limitTriaMapSize)
     val periods = repeat(experimentCount, Unit => {calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize))})
     writeLineChartFile(resultFileDir, resultFileName, caches, periods)
     //writeBarChartFile(resultFileDir, resultFileName, caches, periods)
