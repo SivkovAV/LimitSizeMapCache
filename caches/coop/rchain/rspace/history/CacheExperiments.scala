@@ -6,7 +6,7 @@ import java.security.MessageDigest
 
 
 object CacheExperiments {
-  sealed trait TrieMapTestTrait {
+  sealed trait TrieMapTestTrait extends Thread {
     val name: String
 
     def get(key: Array[Byte]): Option[Int]
@@ -103,12 +103,12 @@ object CacheExperiments {
     MessageDigest.getInstance("sha-256").digest(BigInt(value).toByteArray)
   }
 
-  def prepareGetEvents(uniqueCount: Int, copyCount: Int = 1): List[TriaMapEvent] = {
+  def prepareGetEvents(uniqueCount: Int, copyCount: Int = 1): List[TrieMapEvent] = {
     val uniqueEvents = (0 until uniqueCount).toList.map(i => GetValue(sha256(i)))
     List.fill(copyCount)(uniqueEvents).flatten
   }
 
-  def prepareSetEvents(uniqueCount: Int, copyCount: Int = 1): List[TriaMapEvent] = {
+  def prepareSetEvents(uniqueCount: Int, copyCount: Int = 1): List[TrieMapEvent] = {
     val uniqueEvents = (0 until uniqueCount).toList.map(i => SetValue(sha256(i), i))
     List.fill(copyCount)(uniqueEvents).flatten
   }
@@ -120,7 +120,9 @@ object CacheExperiments {
     List(triaMap1, triaMap2, triaMap3)
   }
 
-  def testReadManyOldItemsOnly(resultFileDir: String, resultFileName: String): Unit = {
+  def repeat(experimentCount: Int, process: Unit => List[Long]) = List.fill(experimentCount)(process())
+
+  def testReadManyOldItemsOnly(experimentCount: Int, resultFileDir: String, resultFileName: String): Unit = {
     println("testReadManyOldItemsOnly")
     val limitTriaMapSize = 1000
     val scale = 1000
@@ -130,23 +132,12 @@ object CacheExperiments {
 
     // setup cache data
     calculateCachesWorkTime(caches, prepareSetEvents(ItemsCount))
-
-    val periods =
-      calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        Nil
-
+    val periods = repeat(experimentCount, Unit => {calculateCachesWorkTime(caches, queue)})
     writeLineChartFile(resultFileDir, resultFileName, caches, periods)
-    writeBarChartFile(resultFileDir, resultFileName, caches, periods)
+    //writeBarChartFile(resultFileDir, resultFileName, caches, periods)
   }
 
-  def testReadOldItemsOnly(resultFileDir: String, resultFileName: String): Unit = {
+  def testReadOldItemsOnly(experimentCount: Int, resultFileDir: String, resultFileName: String): Unit = {
     println("testReadOldItemsOnly")
     val limitTriaMapSize = 1000
     val scale = 1
@@ -156,45 +147,25 @@ object CacheExperiments {
 
     // setup cache data
     calculateCachesWorkTime(caches, prepareSetEvents(ItemsCount))
-
-    val periods =
-      calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        calculateCachesWorkTime(caches, queue) ::
-        Nil
-
+    val periods = repeat(experimentCount, Unit => {calculateCachesWorkTime(caches, queue)})
     writeLineChartFile(resultFileDir, resultFileName, caches, periods)
-    writeBarChartFile(resultFileDir, resultFileName, caches, periods)
+    //writeBarChartFile(resultFileDir, resultFileName, caches, periods)
   }
 
-  def testAddNewItemsOnly(resultFileDir: String, resultFileName: String): Unit = {
+  def testAddNewItemsOnly(experimentCount: Int, resultFileDir: String, resultFileName: String): Unit = {
     println("testAddNewItemsOnly")
     val limitTriaMapSize = 1000
-    val caches = prepareCaches(limitTriaMapSize)
-    val periods =
-      calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize)) ::
-        calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize)) ::
-        calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize)) ::
-        calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize)) ::
-        calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize)) ::
-        calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize)) ::
-        calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize)) ::
-        calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize)) ::
-        Nil
-
+    val caches = prepareCaches(limitTriaMapSize)p
+    val periods = repeat(experimentCount, Unit => {calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize))})
     writeLineChartFile(resultFileDir, resultFileName, caches, periods)
-    writeBarChartFile(resultFileDir, resultFileName, caches, periods)
+    //writeBarChartFile(resultFileDir, resultFileName, caches, periods)
   }
 
   def main(args: Array[String]): Unit = {
     val resultFileDir = "./tmp"
-    testReadManyOldItemsOnly(resultFileDir, "cachesCompare_readManyOld")
-    testReadOldItemsOnly(resultFileDir, "cachesCompare_readOld")
-    testAddNewItemsOnly(resultFileDir, "cachesCompare_writeNew")
+    val experimentCount = 20
+    testReadManyOldItemsOnly(experimentCount, resultFileDir, "cachesCompare_readManyOld")
+    testReadOldItemsOnly(    experimentCount, resultFileDir, "cachesCompare_readOld")
+    testAddNewItemsOnly(     experimentCount, resultFileDir, "cachesCompare_writeNew")
   }
 }
