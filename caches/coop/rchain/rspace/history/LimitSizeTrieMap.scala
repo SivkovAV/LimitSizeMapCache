@@ -10,16 +10,16 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
   * @param maxSize - items count after which old records should be cleared
   * Inner fields description:
   * sizeLimit - verified version of [[maxSize]]
-  * cache     - TrieMap[key, (value, Option[nextKey], Option[prevKey])]; nextKey closer to topKey; prevKey closer to bottomKey;
-  * topKey    - last read item's key
-  * bottomKey - most old item's key
+  * cache     - TrieMap[key, (value, Option[nextKey], Option[prevKey])]; nextKey closer to mayBeTopKey; prevKey closer to mayBeBottomKey;
+  * mayBeTopKey    - last read item's key
+  * mayBeBottomKey - most old item's key
   */
 @SuppressWarnings(Array("org.wartremover.warts.Var", "org.wartremover.warts.NonUnitStatements"))
 class LimitSizeTrieMap[A, B](private val maxSize: Int) {
   private val sizeLimit: Int = prepareMaxSize(maxSize)
   private val cache: TrieMap[A, (B, Option[A], Option[A])] = TrieMap.empty[A, (B, Option[A], Option[A])]
-  private var topKey: Option[A] = None
-  private var bottomKey: Option[A] = None
+  private var mayBeTopKey: Option[A] = None
+  private var mayBeBottomKey: Option[A] = None
 
   private def prepareMaxSize(maxSize: Int): Int = if (maxSize <= 0) 1 else maxSize
 
@@ -30,33 +30,38 @@ class LimitSizeTrieMap[A, B](private val maxSize: Int) {
       None
     } else {
       // modify next cache value
-      if (cache(bottomKey.get)._2.isDefined) {
-        val nextKey = cache(bottomKey.get)._2.get
+      if (cache(mayBeBottomKey.get)._2.isDefined) {
+        val (_, mayBeNextKey, mayBePrevKey) = cache(mayBeBottomKey.get)
+        val nextKey = mayBeNextKey.get
         val (v, k, _) = cache(nextKey)
-        cache(nextKey) = (v, k, cache(bottomKey.get)._3)
+        cache(nextKey) = (v, k, mayBePrevKey)
       }
 
       // modify previous cache value
-      if (cache(bottomKey.get)._3.isDefined) {
-        val prevKey = cache(bottomKey.get)._3.get
+      if (cache(mayBeBottomKey.get)._3.isDefined) {
+        val (_, mayBeNextKey, mayBePrevKey) = cache(mayBeBottomKey.get)
+        val prevKey = mayBePrevKey.get
         val (v, _, k) = cache(prevKey)
-        cache(prevKey) = (v, cache(bottomKey.get)._2, k)
+        cache(prevKey) = (v, mayBeNextKey, k)
       }
 
       // modify bottom pointer
-      if (bottomKey.contains(key) && cache(bottomKey.get)._2.isDefined)
-        bottomKey = cache(bottomKey.get)._2
+      if (mayBeBottomKey.contains(key)) {
+        val mayBeBottomNextKey = cache(mayBeBottomKey.get)._2
+        if (mayBeBottomNextKey.isDefined)
+          mayBeBottomKey = mayBeBottomNextKey
+      }
 
-      if (!topKey.contains(key)) {
+      if (!mayBeTopKey.contains(key)) {
         // modify current cache value
-        cache(key) = (cache(key)._1, None, topKey)
+        cache(key) = (cache(key)._1, None, mayBeTopKey)
 
         // modify top cache value
-        val (v, _, k) = cache(topKey.get)
-        cache(topKey.get) = (v, Some(key), k)
+        val (v, _, k) = cache(mayBeTopKey.get)
+        cache(mayBeTopKey.get) = (v, Some(key), k)
 
         // modify top pointer
-        topKey = Some(key)
+        mayBeTopKey = Some(key)
       }
 
       Some(optionValue.get._1)
@@ -70,16 +75,16 @@ class LimitSizeTrieMap[A, B](private val maxSize: Int) {
       cache(key) = (value, nextKey, prevKey)
       get(key)
     } else {
-      cache(key) = (value, None, topKey)
-      if (topKey.isEmpty) {
-        topKey = Some(key)
-        bottomKey = Some(key)
+      cache(key) = (value, None, mayBeTopKey)
+      if (mayBeTopKey.isEmpty) {
+        mayBeTopKey = Some(key)
+        mayBeBottomKey = Some(key)
       } else {
         val nextBottomKey       = clearOldItems()
-        val (value, _, prevKey) = cache(topKey.get)
-        cache(topKey.get) = (value, Some(key), prevKey)
-        topKey = Some(key)
-        bottomKey = nextBottomKey
+        val (value, _, prevKey) = cache(mayBeTopKey.get)
+        cache(mayBeTopKey.get) = (value, Some(key), prevKey)
+        mayBeTopKey = Some(key)
+        mayBeBottomKey = nextBottomKey
       }
     }
   }
@@ -99,11 +104,11 @@ class LimitSizeTrieMap[A, B](private val maxSize: Int) {
 
   private def clearOldItems(): Option[A] =
     if (sizeLimit < cache.size) {
-      val (oldItems, nextBottomKey) = prepareOldItems(sizeLimit / 3, bottomKey, Nil)
+      val (oldItems, nextBottomKey) = prepareOldItems(sizeLimit / 3, mayBeBottomKey, Nil)
       oldItems.foreach(cache.remove)
       nextBottomKey
     } else
-      bottomKey
+      mayBeBottomKey
 }
 
 /**

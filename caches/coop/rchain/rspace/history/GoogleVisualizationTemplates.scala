@@ -1,11 +1,11 @@
 package coop.rchain.rspace.history
 
 sealed trait GoogleVisualizationTemplate {
-  def html(dataStringWith2DArray: String): String
+  def html(dataStringWith2DArray: String, description: String): String
 }
 
 class LineChartTemplate extends GoogleVisualizationTemplate {
-  def html(dataStringWith2DArray: String): String = {
+  def html(dataStringWith2DArray: String, description: String): String = {
     s"""
        |  <html>
        |  <head>
@@ -16,7 +16,7 @@ class LineChartTemplate extends GoogleVisualizationTemplate {
        |      function drawChart() {
        |        var data = google.visualization.arrayToDataTable($dataStringWith2DArray);
        |        var options = {
-       |          title: 'Caches compare',
+       |          title: '$description',
        |          curveType: 'function',
        |          legend: { position: 'bottom' }
        |        };
@@ -36,7 +36,7 @@ class LineChartTemplate extends GoogleVisualizationTemplate {
 }
 
 class BarChartTemplate extends GoogleVisualizationTemplate {
-  def html(dataStringWith2DArray: String): String = {
+  def html(dataStringWith2DArray: String, description: String): String = {
     s"""
        |<html>
        |  <head>
@@ -48,7 +48,7 @@ class BarChartTemplate extends GoogleVisualizationTemplate {
        |        var data = google.visualization.arrayToDataTable($dataStringWith2DArray);
        |        var options = {
        |          chart: {
-       |            title: 'Caches compares',
+       |            title: '$description',
        |            subtitle: 'work time - nanoseconds',
        |          }
        |        };

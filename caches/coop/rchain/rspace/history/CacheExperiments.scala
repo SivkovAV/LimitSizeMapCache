@@ -72,7 +72,8 @@ object CacheExperiments {
 
   def writeGoogleVisualizationFile(fileNamePostfix: String, googleVisualizationTemplate: GoogleVisualizationTemplate,
                                    resultFileDir: String, resultFileName: String,
-                                   caches: List[TrieMapTestTrait], periods: List[List[Long]]): Unit = {
+                                   caches: List[TrieMapTestTrait], periods: List[List[Long]],
+                                   description: String): Unit = {
     val resultFilePath = List(resultFileDir, "/", resultFileName, fileNamePostfix).mkString
     val directory = new File(resultFileDir)
     if (!directory.exists())
@@ -83,23 +84,25 @@ object CacheExperiments {
     val chartData = (labels.mkString("[", ",", "]") :: chartSeries).mkString("[", ",", "]")
 
     val printWriter = new PrintWriter(new File(resultFilePath))
-    printWriter.write(googleVisualizationTemplate.html(chartData))
+    printWriter.write(googleVisualizationTemplate.html(chartData, description))
     printWriter.close()
 
     print(s"Results was saved by path $resultFilePath\n")
   }
 
   def writeLineChartFile(resultFileDir: String, resultFileName: String,
-                         caches: List[TrieMapTestTrait], periods: List[List[Long]]): Unit = {
+                         caches: List[TrieMapTestTrait], periods: List[List[Long]],
+                         description: String = "Caches compare"): Unit = {
     writeGoogleVisualizationFile("_lineChart.html", new LineChartTemplate,
-      resultFileDir, resultFileName, caches, periods)
+      resultFileDir, resultFileName, caches, periods, description)
   }
 
 
   def writeBarChartFile(resultFileDir: String, resultFileName: String,
-                        caches: List[TrieMapTestTrait], periods: List[List[Long]]): Unit = {
+                        caches: List[TrieMapTestTrait], periods: List[List[Long]],
+                        description: String = "Caches compare"): Unit = {
     writeGoogleVisualizationFile("_barChart.html", new BarChartTemplate,
-      resultFileDir, resultFileName, caches, periods)
+      resultFileDir, resultFileName, caches, periods, description)
   }
 
   def sha256(value: Int): Array[Byte] = {
@@ -116,11 +119,12 @@ object CacheExperiments {
     List.fill(copyCount)(uniqueEvents).flatten
   }
 
-  def prepareCaches(limitTriaMapSize: Int = 100): List[TrieMapTestTrait] = {
+  def prepareCaches(limitTriaMapSize: Int = 100, multiThreadMode: Boolean): List[TrieMapTestTrait] = {
     val triaMap1 = new SimpleTriaMap
     val triaMap2 = new LimitTrieMap(limitTriaMapSize)
     val triaMap3 = new MultiThreadLimitTrieMap(limitTriaMapSize)
-    List(triaMap1, triaMap2, triaMap3)
+    if (multiThreadMode) List(triaMap1, triaMap3)
+    else List(triaMap1, triaMap2, triaMap3)
   }
 
   def repeat(multiThreadMode: Boolean, experimentCount: Int, process: Unit => List[Long]): List[List[Long]] = {
@@ -130,54 +134,67 @@ object CacheExperiments {
     else List.fill(experimentCount)(process())
   }
 
-  def testReadManyOldItemsOnly(multiThreadMode: Boolean, experimentCount: Int,
-                               resultFileDir: String, resultFileName: String): Unit = {
+  def addThreadModeToFilename(filename: String, multiThreadMode: Boolean): String = {
+    if (multiThreadMode) "multiThread_" + filename
+    else "singleThread_" + filename
+  }
+
+  def getDescription(limitTriaMapSize: Int, multiThreadMode: Boolean): String = {
+    s"""limitTriaMapSize: $limitTriaMapSize; multiThreadMode: $multiThreadMode"""
+  }
+
+  def testReadManyOldItemsOnly(limitTriaMapSize: Int, multiThreadMode: Boolean, experimentCount: Int,
+                               resultFileDir: String, fileName: String): Unit = {
     println("testReadManyOldItemsOnly")
-    val limitTriaMapSize = 1000
     val scale = 1000
     val ItemsCount = limitTriaMapSize * scale
-    val caches = prepareCaches(limitTriaMapSize)
+    val caches = prepareCaches(limitTriaMapSize, multiThreadMode)
     val queue = prepareGetEvents(ItemsCount)
 
     // setup cache data
     calculateCachesWorkTime(caches, prepareSetEvents(ItemsCount))
     val periods = repeat(multiThreadMode, experimentCount, Unit => {calculateCachesWorkTime(caches, queue)})
-    writeLineChartFile(resultFileDir, resultFileName, caches, periods)
-    //writeBarChartFile(resultFileDir, resultFileName, caches, periods)
+    val description = getDescription(limitTriaMapSize, multiThreadMode)
+    writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
+    //writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
   }
 
-  def testReadOldItemsOnly(multiThreadMode: Boolean, experimentCount: Int,
-                           resultFileDir: String, resultFileName: String): Unit = {
+  def testReadOldItemsOnly(limitTriaMapSize: Int, multiThreadMode: Boolean, experimentCount: Int,
+                           resultFileDir: String, fileName: String): Unit = {
     println("testReadOldItemsOnly")
-    val limitTriaMapSize = 1000
     val scale = 1
     val ItemsCount = limitTriaMapSize * scale
-    val caches = prepareCaches(limitTriaMapSize)
+    val caches = prepareCaches(limitTriaMapSize, multiThreadMode)
     val queue = prepareGetEvents(limitTriaMapSize)
 
     // setup cache data
     calculateCachesWorkTime(caches, prepareSetEvents(ItemsCount))
     val periods = repeat(multiThreadMode, experimentCount, Unit => {calculateCachesWorkTime(caches, queue)})
-    writeLineChartFile(resultFileDir, resultFileName, caches, periods)
-    //writeBarChartFile(resultFileDir, resultFileName, caches, periods)
+    val description = getDescription(limitTriaMapSize, multiThreadMode)
+    writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
+    //writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
   }
 
-  def testAddNewItemsOnly(multiThreadMode: Boolean, experimentCount: Int,
-                          resultFileDir: String, resultFileName: String): Unit = {
+  def testAddNewItemsOnly(limitTriaMapSize: Int, multiThreadMode: Boolean, experimentCount: Int,
+                          resultFileDir: String, fileName: String): Unit = {
     println("testAddNewItemsOnly")
-    val limitTriaMapSize = 1000
-    val caches = prepareCaches(limitTriaMapSize)
+    val caches = prepareCaches(limitTriaMapSize, multiThreadMode)
     val periods = repeat(multiThreadMode, experimentCount, Unit => {calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize))})
-    writeLineChartFile(resultFileDir, resultFileName, caches, periods)
-    //writeBarChartFile(resultFileDir, resultFileName, caches, periods)
+    val description = getDescription(limitTriaMapSize, multiThreadMode)
+    writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
+    //writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
   }
 
   def main(args: Array[String]): Unit = {
+    val limitTriaMapSize = 1000
+    val multiThreadMode = true
+    val experimentCount = 500
     val resultDir = "./resultHTML"
-    val experimentCount = 5
-    val multiThreadMode = false
-    testReadManyOldItemsOnly(multiThreadMode, experimentCount, resultDir, "cachesCompare_readManyOld")
-    testReadOldItemsOnly(    multiThreadMode, experimentCount, resultDir, "cachesCompare_readOld")
-    testAddNewItemsOnly(     multiThreadMode, experimentCount, resultDir, "cachesCompare_writeNew")
+
+    println("This program compare performance of TrieMap and LimitSizeTrieMap and represent results in HTML-files.")
+    testReadManyOldItemsOnly(limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "readManyOld")
+    testReadOldItemsOnly(    limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "readOld")
+    testAddNewItemsOnly(     limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "writeNew")
+    println(s"""HTML-files with Google Visualization graphics are saved in this path: <$resultDir>.""")
   }
 }
