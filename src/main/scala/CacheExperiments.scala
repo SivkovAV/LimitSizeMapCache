@@ -1,4 +1,4 @@
-package coop.rchain.rspace.history
+package stereo.rchain.mapcache
 
 import java.io.{File, PrintWriter}
 import scala.collection.concurrent.TrieMap
@@ -188,7 +188,7 @@ object CacheExperiments {
   def main(args: Array[String]): Unit = {
     val limitTriaMapSize = 1000
     val multiThreadMode = true
-    val experimentCount = 500
+    val experimentCount = 50
     val resultDir = "./resultHTML"
 
     println("This program compare performance of TrieMap and LimitSizeTrieMap and represent results in HTML-files.")

@@ -1,4 +1,4 @@
-package coop.rchain.rspace.history
+package stereo.rchain.mapcache
 
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap

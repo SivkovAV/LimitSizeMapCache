@@ -1,4 +1,4 @@
-package coop.rchain.rspace.history
+package stereo.rchain.mapcache
 
 sealed trait GoogleVisualizationTemplate {
   def html(dataStringWith2DArray: String, description: String): String
