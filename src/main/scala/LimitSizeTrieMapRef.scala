@@ -54,19 +54,19 @@ final case class TrieMapCacheRef[F[_]: Sync, V, K](refToCache: Ref[F, TrieMapCac
     val currentMapValue = cache.records(key)
 
     val currentRecord = key -> CacheItem(currentMapValue.value, None, cache.mayBeTopKey)
-    val updatedNextRecord = for {key <- currentMapValue.mayBeNextKey} yield(key -> cache.records(key))
-    val updatedPrevRecord = for {key <- currentMapValue.mayBePrevKey} yield(key -> cache.records(key))
+    val mayBeNextRecord = for {key <- currentMapValue.mayBeNextKey} yield(key -> cache.records(key))
+    val meyBePrevRecord = for {key <- currentMapValue.mayBePrevKey} yield(key -> cache.records(key))
     val topRecord= cache.mayBeTopKey.get -> cache.records(cache.mayBeTopKey.get).setNextKey(Some(key))
 
     val bottomKey = cache.mayBeBottomKey.get
-    val updatedMayBeBottomKey = bottomKey match {
+    val mayBeBottomKey = bottomKey match {
       case bottomKey if bottomKey == key && cache.records(key).mayBeNextKey.isDefined => cache.records(key).mayBeNextKey
       case _ => cache.mayBeBottomKey
     }
 
-    val updatedRecords = (cache.records + currentRecord + topRecord).update(updatedNextRecord).update(updatedPrevRecord)
+    val records = (cache.records + currentRecord + topRecord).update(mayBeNextRecord).update(meyBePrevRecord)
 
-    TrieMapCache(cache.sizeLimit, updatedRecords, Some(key), updatedMayBeBottomKey)
+    TrieMapCache(cache.sizeLimit, records, Some(key), mayBeBottomKey)
   }
 
   def get(key: K): F[Option[V]] = {
