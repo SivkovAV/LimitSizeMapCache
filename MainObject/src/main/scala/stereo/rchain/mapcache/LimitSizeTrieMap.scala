@@ -74,6 +74,7 @@ class LimitSizeTrieMap[A, B](private val maxSize: Int) {
       val (_, nextKey, prevKey) = cache(key)
       cache(key) = (value, nextKey, prevKey)
       get(key)
+      ()
     } else {
       cache(key) = (value, None, mayBeTopKey)
       if (mayBeTopKey.isEmpty) {

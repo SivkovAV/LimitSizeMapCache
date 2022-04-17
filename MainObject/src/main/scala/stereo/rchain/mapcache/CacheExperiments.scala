@@ -3,9 +3,11 @@ package stereo.rchain.mapcache
 import java.io.{File, PrintWriter}
 import scala.collection.concurrent.TrieMap
 import java.security.MessageDigest
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
+
+import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 
 
 object CacheExperiments {
@@ -28,7 +30,7 @@ object CacheExperiments {
 
   class MultiThreadLimitTrieMap(val size: Int) extends TrieMapTestTrait {
     override val name: String = "MultiThreadLimitTrieMap"
-    private val cache = new MultiThreadLimitSizeTrieMap[Array[Byte], Int](size)
+    private val cache = new LimitSizeTrieMap[Array[Byte], Int](size)
 
     override def get(key: Array[Byte]): Option[Int] = cache.get(key)
 
@@ -127,11 +129,11 @@ object CacheExperiments {
     else List(triaMap1, triaMap2, triaMap3)
   }
 
-  def repeat(multiThreadMode: Boolean, experimentCount: Int, process: Unit => List[Long]): List[List[Long]] = {
+  def repeat(multiThreadMode: Boolean, experimentCount: Int, process: (Unit) => List[Long]): List[List[Long]] = {
     if (multiThreadMode) {
-      List.fill(experimentCount)(Future{process()}).map(f => Await.result(f, 1000.seconds))
+      List.fill(experimentCount)(Future{process.apply(())}).map(f => Await.result(f, 1000.seconds))
     }
-    else List.fill(experimentCount)(process())
+    else List.fill(experimentCount)(process.apply(()))
   }
 
   def addThreadModeToFilename(filename: String, multiThreadMode: Boolean): String = {
@@ -153,7 +155,7 @@ object CacheExperiments {
 
     // setup cache data
     calculateCachesWorkTime(caches, prepareSetEvents(ItemsCount))
-    val periods = repeat(multiThreadMode, experimentCount, Unit => {calculateCachesWorkTime(caches, queue)})
+    val periods = repeat(multiThreadMode, experimentCount, _ => {calculateCachesWorkTime(caches, queue)})
     val description = getDescription(limitTriaMapSize, multiThreadMode)
     writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
     //writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
@@ -169,7 +171,7 @@ object CacheExperiments {
 
     // setup cache data
     calculateCachesWorkTime(caches, prepareSetEvents(ItemsCount))
-    val periods = repeat(multiThreadMode, experimentCount, Unit => {calculateCachesWorkTime(caches, queue)})
+    val periods = repeat(multiThreadMode, experimentCount, (_:Unit) => calculateCachesWorkTime(caches, queue))
     val description = getDescription(limitTriaMapSize, multiThreadMode)
     writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
     //writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
@@ -179,7 +181,7 @@ object CacheExperiments {
                           resultFileDir: String, fileName: String): Unit = {
     println("testAddNewItemsOnly")
     val caches = prepareCaches(limitTriaMapSize, multiThreadMode)
-    val periods = repeat(multiThreadMode, experimentCount, Unit => {calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize))})
+    val periods = repeat(multiThreadMode, experimentCount, (_:Unit) => {calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize))})
     val description = getDescription(limitTriaMapSize, multiThreadMode)
     writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
     //writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
@@ -187,11 +189,11 @@ object CacheExperiments {
 
   def main(args: Array[String]): Unit = {
     val limitTriaMapSize = 1000
-    val multiThreadMode = true
-    val experimentCount = 50
+    val multiThreadMode = false
+    val experimentCount = 1
     val resultDir = "./resultHTML"
 
-    println("This program compare performance of TrieMap and LimitSizeTrieMap and represent results in HTML-files.")
+    println("This program compare performance of LimitSizeTrieMap's implementations and represent results in HTML-files.")
     testReadManyOldItemsOnly(limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "readManyOld")
     testReadOldItemsOnly(    limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "readOld")
     testAddNewItemsOnly(     limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "writeNew")
