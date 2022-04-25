@@ -1,81 +1,101 @@
 package stereo.rchain.mapcache
 
 import cats.syntax.all._
-import scala.annotation.tailrec
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
 
 
-case class CacheItem[V, K](value: V, mayBeNextKey: Option[K], mayBePrevKey: Option[K]) {
-  def setNextKey(mayBeNextKey: Option[K]): CacheItem[V, K] = {
-    CacheItem(this.value, mayBeNextKey, this.mayBePrevKey)
+case class CacheItem[K, V](value: V, mayBeNextKey: Option[K], mayBePrevKey: Option[K]) {
+  def setNextKey(key: K): CacheItem[K, V] = {
+    CacheItem(value, Some(key), mayBePrevKey)
+  }
+
+  def resetPrevKey(): CacheItem[K, V] = {
+    CacheItem(value, mayBeNextKey, None)
   }
 }
 
 
-case class TrieMapCache[V, K](val sizeLimit: Int,
-                              val records: Map[K, CacheItem[V, K]] = Map.empty[K, CacheItem[V, K]],
+case class TrieMapCache[K, V](val sizeLimit: Int, val reducingFactor: Double = 0.7,
+                              val records: Map[K, CacheItem[K, V]] = Map.empty[K, CacheItem[K, V]],
                               val mayBeTopKey: Option[K] = None,
                               val mayBeBottomKey: Option[K] = None) {
-  def setValueByKey(key: K, value: V): TrieMapCache[V, K] = {
-    val record = this.records(key)
-    val records = this.records + (key -> CacheItem(value, record.mayBeNextKey, record.mayBePrevKey))
-    TrieMapCache(this.sizeLimit, records, this.mayBeTopKey, this.mayBeBottomKey)
+  class ExtendedMap(cache: Map[K, CacheItem[K, V]]) {
+    def update(mayBeItem: Option[(K, CacheItem[K, V])]): Map[K, CacheItem[K, V]] =
+      mayBeItem.map(item => cache + item).getOrElse(cache)
+  }
+  implicit def mapToMap(cache: Map[K, CacheItem[K, V]]): ExtendedMap = new ExtendedMap(cache)
+
+  def updateOnTop(key: K, value: V): TrieMapCache[K, V] = {
+    if (!records.contains(key)) addValueByKeyOnTop(key, value)
+    else setValueByKey(key, value).moveRecordOnTop(key)
   }
 
-  private def removeLastRecord(): TrieMapCache[V, K] = {
-    val key = this.mayBeBottomKey.get
-    TrieMapCache(this.sizeLimit, this.records - key, this.mayBeTopKey, this.records(key).mayBeNextKey)
+  private def addValueByKeyOnTop(key: K, value: V): TrieMapCache[K, V] = {
+    val currentRecord = key -> CacheItem(value, None, mayBeTopKey)
+    val mayBeTopRecord = for {topKey <- mayBeTopKey; item = topKey -> records(topKey).setNextKey(key)} yield(item)
+    val newRecords = (records + currentRecord).update(mayBeTopRecord)
+    val newMayBeTopKey = Some(key)
+    val newMayBeBottomKey = Some(mayBeBottomKey.getOrElse(key))
+    TrieMapCache(sizeLimit, reducingFactor, newRecords, newMayBeTopKey, newMayBeBottomKey)
   }
 
-  @tailrec
-  private def removeLastRecords(count: Int): TrieMapCache[V, K] = {
-    if (0 < count) this.removeLastRecord().removeLastRecords(count - 1)
+  private def setValueByKey(key: K, value: V): TrieMapCache[K, V] = {
+    val record = records(key)
+    val item = key -> CacheItem(value, record.mayBeNextKey, record.mayBePrevKey)
+    val newRecords = records + item
+    TrieMapCache(sizeLimit, reducingFactor, newRecords, mayBeTopKey, mayBeBottomKey)
+  }
+
+  def moveRecordOnTop(key: K): TrieMapCache[K, V] = {
+    val currentMapValue = records(key)
+
+    val currentRecord = key -> CacheItem(currentMapValue.value, None, mayBeTopKey)
+    val mayBeNextRecord = for {key <- currentMapValue.mayBeNextKey} yield (key -> records(key))
+    val mayBePrevRecord = for {key <- currentMapValue.mayBePrevKey} yield (key -> records(key))
+    val topRecord = mayBeTopKey.get -> records(mayBeTopKey.get).setNextKey(key)
+
+    val newMayBeBottomKey = mayBeBottomKey match {
+      case None => Some(key)
+      case mayBeBottomKey if mayBeBottomKey.get == key && records(key).mayBeNextKey.isDefined => records(key).mayBeNextKey
+      case _ => mayBeBottomKey
+    }
+    val newRecords = (records + currentRecord + topRecord).update(mayBeNextRecord).update(mayBePrevRecord)
+
+    TrieMapCache(sizeLimit, reducingFactor, newRecords, Some(key), newMayBeBottomKey)
+  }
+
+  private def removeLastRecord(): TrieMapCache[K, V] = {
+    val key = mayBeBottomKey.get
+    TrieMapCache(sizeLimit, reducingFactor, records - key, mayBeTopKey, records(key).mayBeNextKey)
+  }
+
+  private def removeLastRecords(count: Int): TrieMapCache[K, V] = {
+    if (0 < count) {
+      val cache = this.removeLastRecord().removeLastRecords(count - 1)
+      val bottomKey = cache.mayBeBottomKey.get
+      val newBottomKey = bottomKey -> cache.records(bottomKey).resetPrevKey()
+      val records = cache.records.update(Some(newBottomKey))
+      TrieMapCache[K, V](cache.sizeLimit, cache.reducingFactor, records, cache.mayBeTopKey, cache.mayBeBottomKey)
+    }
     else this.copy()
   }
 
-  def cleanOldRecords(): TrieMapCache[V, K] = {
+  def cleanOldRecords(): TrieMapCache[K, V] = {
     if (this.sizeLimit < this.records.size) this.removeLastRecords(this.records.size - (0.7 * this.sizeLimit).toInt)
     else this.copy()
   }
 }
 
-final case class TrieMapCacheRef[F[_]: Sync, V, K](val sizeLimit: Int) {
-  val refToCache: F[Ref[F, TrieMapCache[V, K]]] = Ref[F].of(TrieMapCache[V, K](sizeLimit))
 
-  class ExtendedMap(cache: Map[K, CacheItem[V, K]]) {
-    def update(item: Option[(K, CacheItem[V, K])]): Map[K, CacheItem[V, K]] =
-      (for {record <- item} yield cache + record).getOrElse(cache)
-  }
-  implicit def mapToMap(cache: Map[K, CacheItem[V, K]]): ExtendedMap = new ExtendedMap(cache)
-
-  private def moveRecordOnTop(cache: TrieMapCache[V, K], key: K): TrieMapCache[V, K] = {
-    val currentMapValue = cache.records(key)
-
-    val currentRecord = key -> CacheItem(currentMapValue.value, None, cache.mayBeTopKey)
-    val mayBeNextRecord = for {key <- currentMapValue.mayBeNextKey} yield(key -> cache.records(key))
-    val meyBePrevRecord = for {key <- currentMapValue.mayBePrevKey} yield(key -> cache.records(key))
-    val topRecord= cache.mayBeTopKey.get -> cache.records(cache.mayBeTopKey.get).setNextKey(Some(key))
-
-    val bottomKey = cache.mayBeBottomKey.get
-    val mayBeBottomKey = bottomKey match {
-      case bottomKey if bottomKey == key && cache.records(key).mayBeNextKey.isDefined => cache.records(key).mayBeNextKey
-      case _ => cache.mayBeBottomKey
-    }
-
-    val records = (cache.records + currentRecord + topRecord).update(mayBeNextRecord).update(meyBePrevRecord)
-
-    TrieMapCache(cache.sizeLimit, records, Some(key), mayBeBottomKey)
-  }
-
+case class TrieMapCacheRef[F[_]: Sync, K, V](val refToCache: Ref[F, TrieMapCache[K, V]]) {
   def get(key: K): F[Option[V]] = {
     for {
-      refToCacheValue <- refToCache
-      value <- refToCacheValue.modify(cache => {
+      value <- refToCache.modify(cache => {
         val mayBeValue = cache.records.get(key)
         mayBeValue match {
           case None => (cache, None)
-          case _ => (moveRecordOnTop(cache, key), Some(mayBeValue.get.value))
+          case _ => (cache.moveRecordOnTop(key), Some(mayBeValue.get.value))
         }
       })
     } yield(value)
@@ -83,8 +103,7 @@ final case class TrieMapCacheRef[F[_]: Sync, V, K](val sizeLimit: Int) {
 
   def set(key: K, value: V): F[Unit] = {
     for {
-      refToCacheValue <- refToCache
-      _ <- refToCacheValue.update(cache => {moveRecordOnTop(cache.setValueByKey(key, value), key).cleanOldRecords()})
+      _ <- refToCache.update(cache => {cache.updateOnTop(key, value).cleanOldRecords()})
     } yield()
   }
 }

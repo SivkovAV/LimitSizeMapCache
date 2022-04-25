@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import cats.syntax.all._
 import cats.effect.Sync
 
-final case class MyClass[F[_]: Sync](val refValue: Ref[F, Int]) {
+case class MyClass[F[_]: Sync](val refValue: Ref[F, Int]) {
   def set(newValue: Int): F[Unit] = for {
     _ <- refValue.update(_ => {println("it's never printed"); newValue})
   } yield()
@@ -16,10 +16,15 @@ final case class MyClass[F[_]: Sync](val refValue: Ref[F, Int]) {
 class StackSpec extends AnyFlatSpec {
   "it" should "work" in {
     for {
-      refValue <- Ref[Task].of(0)
-      myClass = MyClass[Task](refValue)
-      _ <- myClass.set(1).pure
+      refValue <- Ref.of[Task, Int](0)
+      _ <- refValue.update(i => i)
     } yield()
+
+
+      /*refValue.runSyncUnsafe().set(1)
+      myClass = MyClass[Task](refValue)
+      myClass.run
+      _ <- myClass.set(1).pure*/
   }
 
   /*"TrieMapCacheRef" should "work without exceptions" in {
