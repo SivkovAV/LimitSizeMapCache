@@ -53,22 +53,19 @@ case class TrieMapCache[K, V](val sizeLimit: Int, val reducingFactor: Double = 0
     else {
       val mapValue = records(key)
       val currentRecord = key -> CacheItem(mapValue.value, None, mayBeTopKey)
-      val mayBeNextRecord = for {
-        nk <- mapValue.mayBeNextKey;
-        pk = mapValue.mayBePrevKey;
-        r = nk -> records(nk).setPrevKey(pk)
-      } yield (r)
-      val mayBePrevRecord = for {pk <- mapValue.mayBePrevKey; nk = mapValue.mayBeNextKey; r = pk -> records(pk).setNextKey(nk)} yield (r)
       val topRecord = mayBeTopKey.get -> records(mayBeTopKey.get).setNextKey(Some(key))
+      val newRecords = records + currentRecord + topRecord
+
+      val mayBeNextRecord = for {nk <- mapValue.mayBeNextKey; pk = mapValue.mayBePrevKey; r = nk -> newRecords(nk).setPrevKey(pk)} yield (r)
+      val mayBePrevRecord = for {pk <- mapValue.mayBePrevKey; nk = mapValue.mayBeNextKey; r = pk -> newRecords(pk).setNextKey(nk)} yield (r)
 
       val newMayBeBottomKey = mayBeBottomKey match {
-        //case None => Some(key)
         case mayBeBottomKey if mayBeBottomKey.get == key && records(key).mayBeNextKey.isDefined => records(key).mayBeNextKey
         case _ => mayBeBottomKey
       }
-      val newRecords = (records + currentRecord + topRecord).update(mayBeNextRecord).update(mayBePrevRecord)
+      val finalRecords = newRecords.update(mayBeNextRecord).update(mayBePrevRecord)
 
-      TrieMapCache(sizeLimit, reducingFactor, newRecords, Some(key), newMayBeBottomKey)
+      TrieMapCache(sizeLimit, reducingFactor, finalRecords, Some(key), newMayBeBottomKey)
     }
   }
 

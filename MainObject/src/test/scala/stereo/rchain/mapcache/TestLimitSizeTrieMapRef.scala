@@ -106,6 +106,32 @@ class TrieMapCacheSpec extends AnyFlatSpec {
     assert(dstCache == srcCache)
   }
 
+  "TrieMapCache::moveRecordOnTop" should "move before the top item on top" in {
+    val limitSize = 5
+    val reducingFactor = 0.7
+
+    val srcInnerMap = Map(
+      0 -> CacheItem[Int, String]("0", None, Some(1)),
+      1 -> CacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> CacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> CacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> CacheItem[Int, String]("4", Some(3), None))
+    val srcCache = TrieMapCache[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+
+    val requiredInnerMap = Map(
+      1 -> CacheItem[Int, String]("1", None, Some(0)),
+      0 -> CacheItem[Int, String]("0", Some(1), Some(2)),
+      2 -> CacheItem[Int, String]("2", Some(0), Some(3)),
+      3 -> CacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> CacheItem[Int, String]("4", Some(3), None))
+    val requiredDstCache = TrieMapCache[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(4))
+
+    val dstCache = srcCache.moveRecordOnTop(1)
+
+    assert(dstCache != srcCache)
+    assert(dstCache == requiredDstCache)
+  }
+
   "TrieMapCache::moveRecordOnTop" should "move central item on top" in {
     val limitSize = 5
     val reducingFactor = 0.7
@@ -127,6 +153,32 @@ class TrieMapCacheSpec extends AnyFlatSpec {
     val requiredDstCache = TrieMapCache[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(2), Some(4))
 
     val dstCache = srcCache.moveRecordOnTop(2)
+
+    assert(dstCache != srcCache)
+    assert(dstCache == requiredDstCache)
+  }
+
+  "TrieMapCache::moveRecordOnTop" should "move before the bottom item on top" in {
+    val limitSize = 5
+    val reducingFactor = 0.7
+
+    val srcInnerMap = Map(
+      0 -> CacheItem[Int, String]("0", None, Some(1)),
+      1 -> CacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> CacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> CacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> CacheItem[Int, String]("4", Some(3), None))
+    val srcCache = TrieMapCache[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+
+    val requiredInnerMap = Map(
+      3 -> CacheItem[Int, String]("3", None, Some(0)),
+      0 -> CacheItem[Int, String]("0", Some(3), Some(1)),
+      1 -> CacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> CacheItem[Int, String]("2", Some(1), Some(4)),
+      4 -> CacheItem[Int, String]("4", Some(2), None))
+    val requiredDstCache = TrieMapCache[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(3), Some(4))
+
+    val dstCache = srcCache.moveRecordOnTop(3)
 
     assert(dstCache != srcCache)
     assert(dstCache == requiredDstCache)
