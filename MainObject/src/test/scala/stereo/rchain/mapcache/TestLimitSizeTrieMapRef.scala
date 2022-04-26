@@ -1,39 +1,160 @@
 package stereo.rchain.mapcache
 
-import cats.effect.concurrent.Ref
-import monix.eval.Task
 import org.scalatest.flatspec.AnyFlatSpec
-import cats.syntax.all._
-import cats.effect.Sync
-
-case class MyClass[F[_]: Sync](val refValue: Ref[F, Int]) {
-  def set(newValue: Int): F[Unit] = for {
-    _ <- refValue.update(_ => {println("it's never printed"); newValue})
-  } yield()
-}
 
 
-class StackSpec extends AnyFlatSpec {
-  "it" should "work" in {
-    for {
-      refValue <- Ref.of[Task, Int](0)
-      _ <- refValue.update(i => i)
-    } yield()
-
-
-      /*refValue.runSyncUnsafe().set(1)
-      myClass = MyClass[Task](refValue)
-      myClass.run
-      _ <- myClass.set(1).pure*/
+class CacheItemSpec extends AnyFlatSpec {
+  def checkNextKey(newMayBeNextKey: Option[Int], oldMayBeNextKey: Option[Int]): Unit = {
+    val srcCacheItem = CacheItem[Int, String](value="this is string value", mayBeNextKey=oldMayBeNextKey, mayBePrevKey=None)
+    val dstCacheItem = srcCacheItem.setNextKey(newMayBeNextKey)
+    assert(srcCacheItem.value == dstCacheItem.value)
+    assert(newMayBeNextKey == dstCacheItem.mayBeNextKey)
+    assert(srcCacheItem.mayBePrevKey == dstCacheItem.mayBePrevKey)
+    ()
   }
 
-  /*"TrieMapCacheRef" should "work without exceptions" in {
-    val cache = new TrieMapCacheRef[Task, Int, Array[Byte]](1000)
-    val key = Array[Byte]()
-    //val value = cache.get(key)
-    cache.set(key, 0)
-    val value = cache.get(key)
+  "CacheItem::setNextKey" should "modify next key" in {
+    checkNextKey(newMayBeNextKey=None,    oldMayBeNextKey=None)
+    checkNextKey(newMayBeNextKey=Some(1), oldMayBeNextKey=None)
+    checkNextKey(newMayBeNextKey=Some(1), oldMayBeNextKey=Some(2))
+    checkNextKey(newMayBeNextKey=Some(1), oldMayBeNextKey=Some(1))
+  }
 
-    assert(value === None)
-  }*/
+  def checkPrevKey(newMayBeNextKey: Option[Int], oldMayBeNextKey: Option[Int]): Unit = {
+    val srcCacheItem = CacheItem[Int, String](value="this is string value", mayBeNextKey=None, mayBePrevKey=oldMayBeNextKey)
+    val dstCacheItem = srcCacheItem.setPrevKey(newMayBeNextKey)
+    assert(srcCacheItem.value == dstCacheItem.value)
+    assert(srcCacheItem.mayBeNextKey == dstCacheItem.mayBeNextKey)
+    assert(newMayBeNextKey == dstCacheItem.mayBePrevKey)
+    ()
+  }
+
+  "CacheItem::setPrevKey" should "set next key to None" in {
+    checkPrevKey(newMayBeNextKey=None,    oldMayBeNextKey=None)
+    checkPrevKey(newMayBeNextKey=Some(1), oldMayBeNextKey=None)
+    checkPrevKey(newMayBeNextKey=Some(1), oldMayBeNextKey=Some(2))
+    checkPrevKey(newMayBeNextKey=Some(1), oldMayBeNextKey=Some(1))
+  }
+}
+
+class TrieMapCacheSpec extends AnyFlatSpec {
+  "TrieMapCache::cleanOldRecords" should "not clean old records in empty cache" in {
+    val limitSize = 100
+    val srcCache = TrieMapCache[Int, String](limitSize)
+    val dstCache = srcCache.cleanOldRecords()
+    assert(srcCache == dstCache)
+  }
+
+  "TrieMapCache::cleanOldRecords" should "not clean old records while cache size not more then limit" in {
+    val limitSize = 5
+    val reducingFactor = 0.7
+    val innerMap = Map(
+      0 -> CacheItem[Int, String]("0", None, Some(1)),
+      1 -> CacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> CacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> CacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> CacheItem[Int, String]("4", Some(3), None))
+    val srcCache = TrieMapCache[Int, String](limitSize, reducingFactor, innerMap, Some(0), Some(4))
+    val dstCache = srcCache.cleanOldRecords()
+    assert(srcCache == dstCache)
+  }
+
+  "TrieMapCache::cleanOldRecords" should "clean old records" in {
+    val limitSize = 5
+    val reducingFactor = 0.7
+
+    val srcInnerMap = Map(
+      0 -> CacheItem[Int, String]("0", None, Some(1)),
+      1 -> CacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> CacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> CacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> CacheItem[Int, String]("4", Some(3), Some(5)),
+      5 -> CacheItem[Int, String]("5", Some(4), Some(6)),
+      6 -> CacheItem[Int, String]("6", Some(5), Some(7)),
+      7 -> CacheItem[Int, String]("7", Some(6), Some(8)),
+      8 -> CacheItem[Int, String]("8", Some(7), Some(9)),
+      9 -> CacheItem[Int, String]("9", Some(8), None))
+    val srcCache = TrieMapCache[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(9))
+
+    // size of requiredInnerMap is (limitSize * reducingFactor).toInt = (5 * 0.7).toInt = 3
+    val requiredInnerMap = Map(
+      0 -> CacheItem[Int, String]("0", None, Some(1)),
+      1 -> CacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> CacheItem[Int, String]("2", Some(1), None))
+    val requiredDstCache = TrieMapCache[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(0), Some(2))
+
+    val dstCache = srcCache.cleanOldRecords()
+
+    assert(dstCache != srcCache)
+    assert(dstCache == requiredDstCache)
+  }
+
+  "TrieMapCache::moveRecordOnTop" should "not move top item on top" in {
+    val limitSize = 5
+    val reducingFactor = 0.7
+
+    val srcInnerMap = Map(
+      0 -> CacheItem[Int, String]("0", None,    Some(1)),
+      1 -> CacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> CacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> CacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> CacheItem[Int, String]("4", Some(3), None))
+    val srcCache = TrieMapCache[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+
+    val dstCache = srcCache.moveRecordOnTop(0)
+
+    assert(dstCache == srcCache)
+  }
+
+  "TrieMapCache::moveRecordOnTop" should "move central item on top" in {
+    val limitSize = 5
+    val reducingFactor = 0.7
+
+    val srcInnerMap = Map(
+      0 -> CacheItem[Int, String]("0", None, Some(1)),
+      1 -> CacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> CacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> CacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> CacheItem[Int, String]("4", Some(3), None))
+    val srcCache = TrieMapCache[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+
+    val requiredInnerMap = Map(
+      2 -> CacheItem[Int, String]("2", None, Some(0)),
+      0 -> CacheItem[Int, String]("0", Some(2), Some(1)),
+      1 -> CacheItem[Int, String]("1", Some(0), Some(3)),
+      3 -> CacheItem[Int, String]("3", Some(1), Some(4)),
+      4 -> CacheItem[Int, String]("4", Some(3), None))
+    val requiredDstCache = TrieMapCache[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(2), Some(4))
+
+    val dstCache = srcCache.moveRecordOnTop(2)
+
+    assert(dstCache != srcCache)
+    assert(dstCache == requiredDstCache)
+  }
+
+  "TrieMapCache::moveRecordOnTop" should "move bottom item on top" in {
+    val limitSize = 5
+    val reducingFactor = 0.7
+
+    val srcInnerMap = Map(
+      0 -> CacheItem[Int, String]("0", None, Some(1)),
+      1 -> CacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> CacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> CacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> CacheItem[Int, String]("4", Some(3), None))
+    val srcCache = TrieMapCache[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+
+    val requiredInnerMap = Map(
+      4 -> CacheItem[Int, String]("4", None, Some(0)),
+      0 -> CacheItem[Int, String]("0", Some(4), Some(1)),
+      1 -> CacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> CacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> CacheItem[Int, String]("3", Some(2), None))
+    val requiredDstCache = TrieMapCache[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(4), Some(3))
+
+    val dstCache = srcCache.moveRecordOnTop(key=4)
+
+    assert(dstCache != srcCache)
+    assert(dstCache == requiredDstCache)
+  }
 }
