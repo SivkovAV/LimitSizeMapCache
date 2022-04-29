@@ -1,25 +1,13 @@
 package stereo.rchain.mapcache
 
-import cats.effect.{IO, Sync}
+import cats.effect.Sync
 import org.scalatest.PrivateMethodTester
 import org.scalatest.flatspec.AnyFlatSpec
 import cats.effect.concurrent.Ref
-import monix.eval.Task
 import cats.syntax.all._
-//import cats.effect.Sync
 
-/*case class MyClass[F[_]: Sync](val refValue: Ref[F, Int]) {
-  def set(newValue: Int): F[Unit] = for {
-    _ <- refValue.update(_ => {println("it's never printed"); newValue})
-  } yield()
-
-"it" should "work" in {
-for {
-  refValue <- Ref.of[Task, Int](0)
-  _ <- refValue.update(i => i)
-} yield()
-}
-}*/
+//import monix.eval.Task
+import cats.effect.IO
 
 
 class CacheItemSpec extends AnyFlatSpec {
@@ -449,7 +437,7 @@ class TrieMapCacheSpec extends AnyFlatSpec with PrivateMethodTester{
 
 class TrieMapCacheRefSpec extends AnyFlatSpec {
   "Initialized TrieMapCache" should "be empty" in {
-    def test[F[_]: Sync](): F[Unit] = {
+    def test[F[_] : Sync](): F[Unit] = {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
@@ -465,12 +453,13 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
         _ = assert(innerCache.mayBeBottomKey.isEmpty)
       } yield ()
     }
+
     test[IO]().unsafeRunSync()
     ()
   }
 
   "TrieMapCache after 1 call of set()" should "be have 1 item" in {
-    def test[F[_]: Sync](): F[Unit] = {
+    def test[F[_] : Sync](): F[Unit] = {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
@@ -492,12 +481,13 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
         _ = assert(innerCache.mayBeTopKey.contains(0) && innerCache.mayBeBottomKey.contains(0))
       } yield ()
     }
+
     test[IO]().unsafeRunSync()
     ()
   }
 
   "TrieMapCache after 2 call of set()" should "be have 2 item" in {
-    def test[F[_]: Sync](): F[Unit] = {
+    def test[F[_] : Sync](): F[Unit] = {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
@@ -523,12 +513,13 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
         _ = assert(innerCache.mayBeTopKey.contains(1) && innerCache.mayBeBottomKey.contains(0))
       } yield ()
     }
+
     test[IO]().unsafeRunSync()
     ()
   }
 
   "Reading exists item from TrieMapCache" should "modify items order if item is not on top" in {
-    def test[F[_]: Sync](): F[Unit] = {
+    def test[F[_] : Sync](): F[Unit] = {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
@@ -548,12 +539,13 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
         _ = assert(dstCache.records(1).value == dstCache.records(1).value)
       } yield ()
     }
+
     test[IO]().unsafeRunSync()
     ()
   }
 
   "TrieMapCache" should "store all added data if size not more then limitSize" in {
-    def test[F[_]: Sync](): F[Unit] = {
+    def test[F[_] : Sync](): F[Unit] = {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
@@ -568,17 +560,18 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
         innerCache <- cache.refToCache.get
         records = innerCache.records
         _ = assert(records.contains(0) && records.contains(1) && records.contains(2) && records.contains(3) && records.contains(4))
-        _ = assert(records(0).value=="0" && records(1).value=="1" && records(2).value=="2" && records(3).value=="3" && records(4).value=="4")
+        _ = assert(records(0).value == "0" && records(1).value == "1" && records(2).value == "2" && records(3).value == "3" && records(4).value == "4")
         _ = assert(innerCache.mayBeTopKey.contains(4))
         _ = assert(innerCache.mayBeBottomKey.contains(0))
       } yield ()
     }
+
     test[IO]().unsafeRunSync()
     ()
   }
 
   "TrieMapCache" should "decrease inner map size if this size more then limitSize" in {
-    def test[F[_]: Sync](): F[Unit] = {
+    def test[F[_] : Sync](): F[Unit] = {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
@@ -595,34 +588,39 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
         records = innerCache.records
         _ = assert(!records.contains(0) && !records.contains(1) && !records.contains(2))
         _ = assert(records.contains(3) && records.contains(4) && records.contains(5))
-        _ = assert(records(3).value=="3" && records(4).value=="4" && records(5).value=="5")
+        _ = assert(records(3).value == "3" && records(4).value == "4" && records(5).value == "5")
         _ = assert(innerCache.mayBeTopKey.contains(5))
         _ = assert(innerCache.mayBeBottomKey.contains(3))
       } yield ()
     }
+
     test[IO]().unsafeRunSync()
     ()
   }
 
   "TrieMapCache2" should "decrease inner map size if this size more then limitSize" in {
-    val sizeLimit = 5
-    val reducingFactor = 0.7
-    //val sizeAfterDecreasing = (sizeLimit * reducingFactor).toInt
-    for {
-      ref <- Ref.of[Task, TrieMapCache[Int, String]](TrieMapCache[Int, String](sizeLimit, reducingFactor))
-      cache = TrieMapCacheRef(ref)
-      _ <- cache.set(0, "0")
-      _ <- cache.set(1, "1")
-      _ <- cache.set(2, "2")
-      _ <- cache.set(3, "3")
-      _ <- cache.set(4, "4")
-      _ <- cache.set(5, "5")
-      _ <- cache.get(0)
-      _ <- cache.get(1)
-      _ <- cache.get(2)
-      _ <- cache.get(3)
-      _ <- cache.get(4)
-      _ <- cache.set(5, "0")
-    } yield()
+    def test[F[_] : Sync](): F[Unit] = {
+      val sizeLimit = 5
+      val reducingFactor = 0.7
+      for {
+        ref <- Ref.of[F, TrieMapCache[Int, String]](TrieMapCache[Int, String](sizeLimit, reducingFactor))
+        cache = TrieMapCacheRef(ref)
+        _ <- cache.set(0, "0")
+        _ <- cache.set(1, "1")
+        _ <- cache.set(2, "2")
+        _ <- cache.set(3, "3")
+        _ <- cache.set(4, "4")
+        _ <- cache.set(5, "5")
+        _ <- cache.get(0)
+        _ <- cache.get(1)
+        _ <- cache.get(2)
+        _ <- cache.get(3)
+        _ <- cache.get(4)
+        _ <- cache.set(5, "0")
+      } yield ()
+    }
+
+    test[IO]().unsafeRunSync()
+    ()
   }
 }
