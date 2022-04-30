@@ -5,10 +5,8 @@ import org.scalatest.PrivateMethodTester
 import org.scalatest.flatspec.AnyFlatSpec
 import cats.effect.concurrent.Ref
 import cats.syntax.all._
-
-//import monix.eval.Task
-import cats.effect.IO
-
+import monix.eval.Task
+import monix.execution.Scheduler.Implicits.global
 
 class CacheItemSpec extends AnyFlatSpec {
   def checkNextKey(newMayBeNextKey: Option[Int], oldMayBeNextKey: Option[Int]): Unit = {
@@ -435,14 +433,14 @@ class TrieMapCacheSpec extends AnyFlatSpec with PrivateMethodTester{
 }
 
 
-class TrieMapCacheRefSpec extends AnyFlatSpec {
+class LimitSizeTrieMapThreadUnsafeRefSpec extends AnyFlatSpec {
   "Initialized TrieMapCache" should "be empty" in {
     def test[F[_] : Sync](): F[Unit] = {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
         ref <- Ref.of[F, TrieMapCache[Int, String]](TrieMapCache[Int, String](sizeLimit, reducingFactor))
-        cache = TrieMapCacheRef(ref)
+        cache = LimitSizeTrieMapRef(ref)
 
         item <- cache.get(0)
         _ = assert(item.isEmpty)
@@ -454,8 +452,7 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       } yield ()
     }
 
-    test[IO]().unsafeRunSync()
-    ()
+    test[Task]().runSyncUnsafe()
   }
 
   "TrieMapCache after 1 call of set()" should "be have 1 item" in {
@@ -464,7 +461,7 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       val reducingFactor = 0.7
       for {
         ref <- Ref.of[F, TrieMapCache[Int, String]](TrieMapCache[Int, String](sizeLimit, reducingFactor))
-        cache = TrieMapCacheRef(ref)
+        cache = LimitSizeTrieMapRef(ref)
         _ <- cache.set(0, "0")
 
         item0 <- cache.get(0)
@@ -482,8 +479,7 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       } yield ()
     }
 
-    test[IO]().unsafeRunSync()
-    ()
+    test[Task]().runSyncUnsafe()
   }
 
   "TrieMapCache after 2 call of set()" should "be have 2 item" in {
@@ -492,7 +488,7 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       val reducingFactor = 0.7
       for {
         ref <- Ref.of[F, TrieMapCache[Int, String]](TrieMapCache[Int, String](sizeLimit, reducingFactor))
-        cache = TrieMapCacheRef(ref)
+        cache = LimitSizeTrieMapRef(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
 
@@ -514,8 +510,7 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       } yield ()
     }
 
-    test[IO]().unsafeRunSync()
-    ()
+    test[Task]().runSyncUnsafe()
   }
 
   "Reading exists item from TrieMapCache" should "modify items order if item is not on top" in {
@@ -524,7 +519,7 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       val reducingFactor = 0.7
       for {
         ref <- Ref.of[F, TrieMapCache[Int, String]](TrieMapCache[Int, String](sizeLimit, reducingFactor))
-        cache = TrieMapCacheRef(ref)
+        cache = LimitSizeTrieMapRef(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
         srcCache <- cache.refToCache.get
@@ -540,8 +535,7 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       } yield ()
     }
 
-    test[IO]().unsafeRunSync()
-    ()
+    test[Task]().runSyncUnsafe()
   }
 
   "TrieMapCache" should "store all added data if size not more then limitSize" in {
@@ -550,7 +544,7 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       val reducingFactor = 0.7
       for {
         ref <- Ref.of[F, TrieMapCache[Int, String]](TrieMapCache[Int, String](sizeLimit, reducingFactor))
-        cache = TrieMapCacheRef(ref)
+        cache = LimitSizeTrieMapRef(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
         _ <- cache.set(2, "2")
@@ -566,8 +560,7 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       } yield ()
     }
 
-    test[IO]().unsafeRunSync()
-    ()
+    test[Task]().runSyncUnsafe()
   }
 
   "TrieMapCache" should "decrease inner map size if this size more then limitSize" in {
@@ -576,7 +569,7 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       val reducingFactor = 0.7
       for {
         ref <- Ref.of[F, TrieMapCache[Int, String]](TrieMapCache[Int, String](sizeLimit, reducingFactor))
-        cache = TrieMapCacheRef(ref)
+        cache = LimitSizeTrieMapRef(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
         _ <- cache.set(2, "2")
@@ -594,8 +587,7 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       } yield ()
     }
 
-    test[IO]().unsafeRunSync()
-    ()
+    test[Task]().runSyncUnsafe()
   }
 
   "TrieMapCache2" should "decrease inner map size if this size more then limitSize" in {
@@ -604,7 +596,7 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       val reducingFactor = 0.7
       for {
         ref <- Ref.of[F, TrieMapCache[Int, String]](TrieMapCache[Int, String](sizeLimit, reducingFactor))
-        cache = TrieMapCacheRef(ref)
+        cache = LimitSizeTrieMapRef(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
         _ <- cache.set(2, "2")
@@ -620,7 +612,6 @@ class TrieMapCacheRefSpec extends AnyFlatSpec {
       } yield ()
     }
 
-    test[IO]().unsafeRunSync()
-    ()
+    test[Task]().runSyncUnsafe()
   }
 }

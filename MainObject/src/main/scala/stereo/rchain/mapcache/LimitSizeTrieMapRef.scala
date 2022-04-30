@@ -5,6 +5,14 @@ import cats.effect.Sync
 import cats.effect.concurrent.Ref
 
 
+/**
+ * [[CacheItem]] is element of LimitSizeTrieMapRef.
+ * It store "user value" and data about element position inside LimitSizeTrieMapRef
+ *
+ * @param value - stored user value
+ * @param mayBeNextKey - pointer to higher CacheItem or None if current item is top item
+ * @param mayBePrevKey - pointer to lower CacheItem or None if current item is bottom item
+ */
 case class CacheItem[K, V](value: V, mayBeNextKey: Option[K], mayBePrevKey: Option[K]) {
   def setNextKey(mayBeKey: Option[K]): CacheItem[K, V] = {
     CacheItem(value, mayBeKey, mayBePrevKey)
@@ -16,6 +24,15 @@ case class CacheItem[K, V](value: V, mayBeNextKey: Option[K], mayBePrevKey: Opti
 }
 
 
+/**
+ * [[TrieMapCache]] is functional style key-value cache. It's like Map with limited size.
+ * If count of cache elements will be more then limited size, several old element will been remove.
+ *
+ * @param sizeLimit - maximum count of cache elements (limited size)
+ * @param records - key-value style storage with cache elements
+ * @param mayBeTopKey - cache top element key or None if cache is empty
+ * @param mayBeBottomKey - cache bottom element key or None if cache is empty
+ */
 case class TrieMapCache[K, V](val sizeLimit: Int, val reducingFactor: Double = 0.7,
                               val records: Map[K, CacheItem[K, V]] = Map.empty[K, CacheItem[K, V]],
                               val mayBeTopKey: Option[K] = None,
@@ -92,7 +109,12 @@ case class TrieMapCache[K, V](val sizeLimit: Int, val reducingFactor: Double = 0
 }
 
 
-case class TrieMapCacheRef[F[_]: Sync, K, V](val refToCache: Ref[F, TrieMapCache[K, V]]) {
+/**
+ * [[LimitSizeTrieMapRef]] - multi thread version of [[TrieMapCache]]
+ *
+ * @param refToCache - instance of TrieMapCache covered if cats.Ref for multi thread safety
+ */
+case class LimitSizeTrieMapRef[F[_]: Sync, K, V](val refToCache: Ref[F, TrieMapCache[K, V]]) {
   def get(key: K): F[Option[V]] = {
     for {
       value <- refToCache.modify(cache => {

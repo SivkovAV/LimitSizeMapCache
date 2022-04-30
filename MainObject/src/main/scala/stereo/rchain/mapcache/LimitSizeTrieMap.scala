@@ -6,7 +6,8 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 
 
 /**
-  * [[TrieMap]] with limit size. Not multithread-safe (see [[MultiThreadLimitSizeTrieMap]]).
+  * [[TrieMap]] with limit size. Not multithread-safe (see [[LimitSizeTrieMap]]).
+ *
   * @param maxSize - items count after which old records should be cleared
   * Inner fields description:
   * sizeLimit - verified version of [[maxSize]]
@@ -15,7 +16,7 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
   * mayBeBottomKey - most old item's key
   */
 @SuppressWarnings(Array("org.wartremover.warts.Var", "org.wartremover.warts.NonUnitStatements"))
-class LimitSizeTrieMap[A, B](private val maxSize: Int) {
+class LimitSizeTrieMapThreadUnsafe[A, B](private val maxSize: Int) {
   private val sizeLimit: Int = prepareMaxSize(maxSize)
   private val cache: TrieMap[A, (B, Option[A], Option[A])] = TrieMap.empty[A, (B, Option[A], Option[A])]
   private var mayBeTopKey: Option[A] = None
@@ -113,10 +114,11 @@ class LimitSizeTrieMap[A, B](private val maxSize: Int) {
 }
 
 /**
- * [[TrieMap]] with limit size. Multi thread version of [[LimitSizeTrieMap]] class.
+ * [[TrieMap]] with limit size. Multi thread version of [[LimitSizeTrieMapThreadUnsafe]] class.
+ *
  * @param maxSize - items count after which old records should be cleared
  */
-final class MultiThreadLimitSizeTrieMap[A, B](val maxSize: Int) extends LimitSizeTrieMap[A, B](maxSize) {
+final class LimitSizeTrieMap[A, B](val maxSize: Int) extends LimitSizeTrieMapThreadUnsafe[A, B](maxSize) {
   val lock = new ReentrantReadWriteLock()
   override def get(key: A): Option[B] = {
     lock.writeLock().lock()

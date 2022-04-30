@@ -1,6 +1,5 @@
 package stereo.rchain.mapcache
 
-import cats.effect.IO
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
 import cats.syntax.all._
@@ -9,6 +8,7 @@ import java.io.{File, PrintWriter}
 import java.security.MessageDigest
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
+import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 
 
@@ -23,7 +23,7 @@ object CacheExperiments {
 
   class LimitTrieMap[F[_]: Sync](val size: Int) extends AbstractCache[F] {
     override val name: String = "LimitSizeTrieMap"
-    private val cache = new LimitSizeTrieMap[Array[Byte], Int](size)
+    private val cache = new LimitSizeTrieMapThreadUnsafe[Array[Byte], Int](size)
 
     override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
 
@@ -32,7 +32,7 @@ object CacheExperiments {
 
   class MultiThreadLimitTrieMap[F[_]: Sync](val size: Int) extends AbstractCache[F] {
     override val name: String = "MultiThreadLimitTrieMap"
-    private val cache = new LimitSizeTrieMap[Array[Byte], Int](size)
+    private val cache = new LimitSizeTrieMapThreadUnsafe[Array[Byte], Int](size)
 
     override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
 
@@ -52,7 +52,7 @@ object CacheExperiments {
     override val name: String = "MultiThreadLimitTrieMapWithRef"
     private val cacheRef = for {
       ref <- Ref.of[F, TrieMapCache[Array[Byte], Int]](TrieMapCache[Array[Byte], Int](size))
-      cache = TrieMapCacheRef(ref)
+      cache = LimitSizeTrieMapRef(ref)
     } yield(cache)
 
     override def get(key: Array[Byte]): F[Option[Int]] = for {cache <- cacheRef; value <- cache.get(key)} yield(value)
@@ -218,9 +218,9 @@ object CacheExperiments {
     val resultDir = "./resultHTML"
 
     println("This program compare performance of LimitSizeTrieMap's implementations and represent results in HTML-files.")
-    testReadManyOldItemsOnly[IO](limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "readManyOld").unsafeRunSync()
-    testReadOldItemsOnly[IO](    limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "readOld").unsafeRunSync()
-    testAddNewItemsOnly[IO](     limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "writeNew").unsafeRunSync()
+    testReadManyOldItemsOnly[Task](limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "readManyOld").runSyncUnsafe()
+    testReadOldItemsOnly[Task](    limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "readOld").runSyncUnsafe()
+    testAddNewItemsOnly[Task](     limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "writeNew").runSyncUnsafe()
     println(s"""HTML-files with Google Visualization graphics are saved in this path: <$resultDir>.""")
   }
 }
