@@ -21,25 +21,25 @@ object CacheExperiments {
     def set(key: Array[Byte], value: Int): F[Unit]
   }
 
-  class LimitTrieMap[F[_]: Sync](val size: Int) extends AbstractCache[F] {
+  class CacheWithLimitSizeTrieMapThreadUnsafe[F[_]: Sync](val size: Int) extends AbstractCache[F] {
+    override val name: String = "LimitSizeTrieMapThreadUnsafe"
+    private val cache = new LimitSizeTrieMapThreadUnsafe[Array[Byte], Int](size)
+
+    override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
+
+    override def set(key: Array[Byte], value: Int): F[Unit] = cache.set(key, value).pure
+  }
+
+  class CacheWithLimitSizeTrieMap[F[_]: Sync](val size: Int) extends AbstractCache[F] {
     override val name: String = "LimitSizeTrieMap"
-    private val cache = new LimitSizeTrieMapThreadUnsafe[Array[Byte], Int](size)
+    private val cache = new LimitSizeTrieMap[Array[Byte], Int](size)
 
     override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
 
     override def set(key: Array[Byte], value: Int): F[Unit] = cache.set(key, value).pure
   }
 
-  class MultiThreadLimitTrieMap[F[_]: Sync](val size: Int) extends AbstractCache[F] {
-    override val name: String = "MultiThreadLimitTrieMap"
-    private val cache = new LimitSizeTrieMapThreadUnsafe[Array[Byte], Int](size)
-
-    override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
-
-    override def set(key: Array[Byte], value: Int): F[Unit] = cache.set(key, value).pure
-  }
-
-  class SimpleTriaMap[F[_]: Sync] extends AbstractCache[F] {
+  class CacheWithTrieMap[F[_]: Sync] extends AbstractCache[F] {
     override val name: String = "TrieMap"
     private val cache = new TrieMap[Array[Byte], Int]
 
@@ -48,8 +48,8 @@ object CacheExperiments {
     override def set(key: Array[Byte], value: Int): F[Unit] = (cache(key) = value).pure
   }
 
-  class MultiThreadLimitTrieMapWithRef[F[_]: Sync](val size: Int) extends AbstractCache[F] {
-    override val name: String = "MultiThreadLimitTrieMapWithRef"
+  class CacheWithLimitSizeTrieMapRef[F[_]: Sync](val size: Int) extends AbstractCache[F] {
+    override val name: String = "LimitSizeTrieMapRef"
     private val cacheRef = for {
       ref <- Ref.of[F, TrieMapCache[Array[Byte], Int]](TrieMapCache[Array[Byte], Int](size))
       cache = LimitSizeTrieMapRef(ref)
@@ -137,12 +137,12 @@ object CacheExperiments {
   }
 
   def prepareCaches[F[_]: Sync](limitTriaMapSize: Int = 100, multiThreadMode: Boolean): F[List[AbstractCache[F]]] = {
-    val triaMap1 = new SimpleTriaMap
-    val triaMap2 = new LimitTrieMap(limitTriaMapSize)
-    val triaMap3 = new MultiThreadLimitTrieMap(limitTriaMapSize)
-    val triaMap4 = new MultiThreadLimitTrieMapWithRef[F](limitTriaMapSize)
+    val triaMap1 = new CacheWithTrieMap
+    val triaMap2 = new CacheWithLimitSizeTrieMapThreadUnsafe(limitTriaMapSize)
+    val triaMap3 = new CacheWithLimitSizeTrieMap(limitTriaMapSize)
+    val triaMap4 = new CacheWithLimitSizeTrieMapRef[F](limitTriaMapSize)
 
-    if (multiThreadMode) List(triaMap1, /*triaMap3,*/ triaMap4).pure
+    if (multiThreadMode) List(triaMap1, triaMap3, triaMap4).pure
     else List(triaMap1, triaMap2, triaMap3, triaMap4).pure
   }
 
@@ -214,7 +214,7 @@ object CacheExperiments {
   def main(args: Array[String]): Unit = {
     val limitTriaMapSize = 1000
     val multiThreadMode = true
-    val experimentCount = 50
+    val experimentCount = 500
     val resultDir = "./resultHTML"
 
     println("This program compare performance of LimitSizeTrieMap's implementations and represent results in HTML-files.")
