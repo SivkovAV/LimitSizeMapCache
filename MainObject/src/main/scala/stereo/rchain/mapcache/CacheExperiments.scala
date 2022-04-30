@@ -1,50 +1,65 @@
 package stereo.rchain.mapcache
 
-import java.io.{File, PrintWriter}
+import cats.effect.IO
+import cats.effect.Sync
+import cats.effect.concurrent.Ref
+import cats.syntax.all._
 import scala.collection.concurrent.TrieMap
+import java.io.{File, PrintWriter}
 import java.security.MessageDigest
-
 import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
-import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 
 
 object CacheExperiments {
-  sealed trait TrieMapTestTrait {
+  abstract class AbstractCache[F[_]: Sync] {
     val name: String
 
-    def get(key: Array[Byte]): Option[Int]
+    def get(key: Array[Byte]): F[Option[Int]]
 
-    def set(key: Array[Byte], value: Int): Unit
+    def set(key: Array[Byte], value: Int): F[Unit]
   }
 
-  class LimitTrieMap(val size: Int) extends TrieMapTestTrait {
+  class LimitTrieMap[F[_]: Sync](val size: Int) extends AbstractCache[F] {
     override val name: String = "LimitSizeTrieMap"
     private val cache = new LimitSizeTrieMap[Array[Byte], Int](size)
 
-    override def get(key: Array[Byte]): Option[Int] = cache.get(key)
+    override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
 
-    override def set(key: Array[Byte], value: Int): Unit = cache.set(key, value)
+    override def set(key: Array[Byte], value: Int): F[Unit] = cache.set(key, value).pure
   }
 
-  class MultiThreadLimitTrieMap(val size: Int) extends TrieMapTestTrait {
+  class MultiThreadLimitTrieMap[F[_]: Sync](val size: Int) extends AbstractCache[F] {
     override val name: String = "MultiThreadLimitTrieMap"
     private val cache = new LimitSizeTrieMap[Array[Byte], Int](size)
 
-    override def get(key: Array[Byte]): Option[Int] = cache.get(key)
+    override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
 
-    override def set(key: Array[Byte], value: Int): Unit = cache.set(key, value)
+    override def set(key: Array[Byte], value: Int): F[Unit] = cache.set(key, value).pure
   }
 
-  class SimpleTriaMap extends TrieMapTestTrait {
+  class SimpleTriaMap[F[_]: Sync] extends AbstractCache[F] {
     override val name: String = "TrieMap"
     private val cache = new TrieMap[Array[Byte], Int]
 
-    override def get(key: Array[Byte]): Option[Int] = cache.get(key)
+    override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
 
-    override def set(key: Array[Byte], value: Int): Unit = cache(key) = value
+    override def set(key: Array[Byte], value: Int): F[Unit] = (cache(key) = value).pure
   }
+
+  class MultiThreadLimitTrieMapWithRef[F[_]: Sync](val size: Int) extends AbstractCache[F] {
+    override val name: String = "MultiThreadLimitTrieMapWithRef"
+    private val cacheRef = for {
+      ref <- Ref.of[F, TrieMapCache[Array[Byte], Int]](TrieMapCache[Array[Byte], Int](size))
+      cache = TrieMapCacheRef(ref)
+    } yield(cache)
+
+    override def get(key: Array[Byte]): F[Option[Int]] = for {cache <- cacheRef; value <- cache.get(key)} yield(value)
+
+    override def set(key: Array[Byte], value: Int): F[Unit] = for {cache <- cacheRef; _ <- cache.set(key, value)} yield()
+  }
+
 
   sealed trait TrieMapEvent {
     val key: Array[Byte]
@@ -54,27 +69,27 @@ object CacheExperiments {
 
   case class SetValue(override val key: Array[Byte], value: Int) extends TrieMapEvent
 
-  def processEventsQueue(cache: TrieMapTestTrait, queue: List[TrieMapEvent]): Unit = {
+  def processEventsQueue[F[_]: Sync](cache: AbstractCache[F], queue: List[TrieMapEvent]): Unit = {
     queue.foreach {
       case GetValue(key) => cache.get(key)
       case SetValue(key, value) => cache.set(key, value)
     }
   }
 
-  def calculateCacheWorkTime(cache: TrieMapTestTrait, queue: List[TrieMapEvent]): Long = {
+  def calculateCacheWorkTime[F[_]: Sync](cache: AbstractCache[F], queue: List[TrieMapEvent]): Long = {
     val beginTime = System.nanoTime
     processEventsQueue(cache, queue)
     System.nanoTime - beginTime
   }
 
-  def calculateCachesWorkTime(caches: List[TrieMapTestTrait],
+  def calculateCachesWorkTime[F[_]: Sync](caches: List[AbstractCache[F]],
                               queue: List[TrieMapEvent]): List[Long] = {
     caches.map(cache => calculateCacheWorkTime(cache, queue))
   }
 
-  def writeGoogleVisualizationFile(fileNamePostfix: String, googleVisualizationTemplate: GoogleVisualizationTemplate,
+  def writeGoogleVisualizationFile[F[_]: Sync](fileNamePostfix: String, googleVisualizationTemplate: GoogleVisualizationTemplate,
                                    resultFileDir: String, resultFileName: String,
-                                   caches: List[TrieMapTestTrait], periods: List[List[Long]],
+                                   caches: List[AbstractCache[F]], periods: List[List[Long]],
                                    description: String): Unit = {
     val resultFilePath = List(resultFileDir, "/", resultFileName, fileNamePostfix).mkString
     val directory = new File(resultFileDir)
@@ -92,16 +107,16 @@ object CacheExperiments {
     print(s"Results was saved by path $resultFilePath\n")
   }
 
-  def writeLineChartFile(resultFileDir: String, resultFileName: String,
-                         caches: List[TrieMapTestTrait], periods: List[List[Long]],
+  def writeLineChartFile[F[_]: Sync](resultFileDir: String, resultFileName: String,
+                         caches: List[AbstractCache[F]], periods: List[List[Long]],
                          description: String = "Caches compare"): Unit = {
     writeGoogleVisualizationFile("_lineChart.html", new LineChartTemplate,
       resultFileDir, resultFileName, caches, periods, description)
   }
 
 
-  def writeBarChartFile(resultFileDir: String, resultFileName: String,
-                        caches: List[TrieMapTestTrait], periods: List[List[Long]],
+  def writeBarChartFile[F[_]: Sync](resultFileDir: String, resultFileName: String,
+                        caches: List[AbstractCache[F]], periods: List[List[Long]],
                         description: String = "Caches compare"): Unit = {
     writeGoogleVisualizationFile("_barChart.html", new BarChartTemplate,
       resultFileDir, resultFileName, caches, periods, description)
@@ -121,12 +136,14 @@ object CacheExperiments {
     List.fill(copyCount)(uniqueEvents).flatten
   }
 
-  def prepareCaches(limitTriaMapSize: Int = 100, multiThreadMode: Boolean): List[TrieMapTestTrait] = {
+  def prepareCaches[F[_]: Sync](limitTriaMapSize: Int = 100, multiThreadMode: Boolean): F[List[AbstractCache[F]]] = {
     val triaMap1 = new SimpleTriaMap
     val triaMap2 = new LimitTrieMap(limitTriaMapSize)
     val triaMap3 = new MultiThreadLimitTrieMap(limitTriaMapSize)
-    if (multiThreadMode) List(triaMap1, triaMap3)
-    else List(triaMap1, triaMap2, triaMap3)
+    val triaMap4 = new MultiThreadLimitTrieMapWithRef[F](limitTriaMapSize)
+
+    if (multiThreadMode) List(triaMap1, /*triaMap3,*/ triaMap4).pure
+    else List(triaMap1, triaMap2, triaMap3, triaMap4).pure
   }
 
   def repeat(multiThreadMode: Boolean, experimentCount: Int, process: (Unit) => List[Long]): List[List[Long]] = {
@@ -145,58 +162,65 @@ object CacheExperiments {
     s"""limitTriaMapSize: $limitTriaMapSize; multiThreadMode: $multiThreadMode"""
   }
 
-  def testReadManyOldItemsOnly(limitTriaMapSize: Int, multiThreadMode: Boolean, experimentCount: Int,
-                               resultFileDir: String, fileName: String): Unit = {
+  def testReadManyOldItemsOnly[F[_]: Sync](limitTriaMapSize: Int, multiThreadMode: Boolean, experimentCount: Int,
+                               resultFileDir: String, fileName: String): F[Unit] = {
     println("testReadManyOldItemsOnly")
     val scale = 1000
     val ItemsCount = limitTriaMapSize * scale
-    val caches = prepareCaches(limitTriaMapSize, multiThreadMode)
-    val queue = prepareGetEvents(ItemsCount)
+    for {
+      caches <- prepareCaches[F](limitTriaMapSize, multiThreadMode)
+      queue = prepareGetEvents(ItemsCount)
 
-    // setup cache data
-    calculateCachesWorkTime(caches, prepareSetEvents(ItemsCount))
-    val periods = repeat(multiThreadMode, experimentCount, _ => {calculateCachesWorkTime(caches, queue)})
-    val description = getDescription(limitTriaMapSize, multiThreadMode)
-    writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
-    //writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
+      // setup cache data
+      _ = calculateCachesWorkTime[F](caches, prepareSetEvents(ItemsCount))
+      periods = repeat(multiThreadMode, experimentCount, _ => {calculateCachesWorkTime[F](caches, queue)})
+      description = getDescription(limitTriaMapSize, multiThreadMode)
+      _ = writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
+      //_ = writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
+    } yield()
   }
 
-  def testReadOldItemsOnly(limitTriaMapSize: Int, multiThreadMode: Boolean, experimentCount: Int,
-                           resultFileDir: String, fileName: String): Unit = {
+  def testReadOldItemsOnly[F[_]: Sync](limitTriaMapSize: Int, multiThreadMode: Boolean, experimentCount: Int,
+                           resultFileDir: String, fileName: String): F[Unit] = {
     println("testReadOldItemsOnly")
     val scale = 1
     val ItemsCount = limitTriaMapSize * scale
-    val caches = prepareCaches(limitTriaMapSize, multiThreadMode)
-    val queue = prepareGetEvents(limitTriaMapSize)
+    for {
+      caches <- prepareCaches[F](limitTriaMapSize, multiThreadMode)
+      queue = prepareGetEvents(limitTriaMapSize)
 
-    // setup cache data
-    calculateCachesWorkTime(caches, prepareSetEvents(ItemsCount))
-    val periods = repeat(multiThreadMode, experimentCount, (_:Unit) => calculateCachesWorkTime(caches, queue))
-    val description = getDescription(limitTriaMapSize, multiThreadMode)
-    writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
-    //writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
+      // setup cache data
+      _ = calculateCachesWorkTime[F](caches, prepareSetEvents(ItemsCount))
+      periods = repeat(multiThreadMode, experimentCount, (_:Unit) => calculateCachesWorkTime[F](caches, queue))
+      description = getDescription(limitTriaMapSize, multiThreadMode)
+      _ = writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
+      //_ = writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
+    } yield()
   }
 
-  def testAddNewItemsOnly(limitTriaMapSize: Int, multiThreadMode: Boolean, experimentCount: Int,
-                          resultFileDir: String, fileName: String): Unit = {
+  def testAddNewItemsOnly[F[_]: Sync](limitTriaMapSize: Int, multiThreadMode: Boolean, experimentCount: Int,
+                          resultFileDir: String, fileName: String): F[Unit] = {
     println("testAddNewItemsOnly")
-    val caches = prepareCaches(limitTriaMapSize, multiThreadMode)
-    val periods = repeat(multiThreadMode, experimentCount, (_:Unit) => {calculateCachesWorkTime(caches, prepareSetEvents(limitTriaMapSize))})
-    val description = getDescription(limitTriaMapSize, multiThreadMode)
-    writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
-    //writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
+    for {
+      caches <- prepareCaches[F](limitTriaMapSize, multiThreadMode)
+      periods = repeat(multiThreadMode, experimentCount, (_:Unit) => {calculateCachesWorkTime[F](caches, prepareSetEvents(limitTriaMapSize))})
+      description = getDescription(limitTriaMapSize, multiThreadMode)
+      _ = writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
+      //_ = writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, periods, description)
+    } yield()
   }
+
 
   def main(args: Array[String]): Unit = {
     val limitTriaMapSize = 1000
-    val multiThreadMode = false
-    val experimentCount = 1
+    val multiThreadMode = true
+    val experimentCount = 50
     val resultDir = "./resultHTML"
 
     println("This program compare performance of LimitSizeTrieMap's implementations and represent results in HTML-files.")
-    testReadManyOldItemsOnly(limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "readManyOld")
-    testReadOldItemsOnly(    limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "readOld")
-    testAddNewItemsOnly(     limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "writeNew")
+    testReadManyOldItemsOnly[IO](limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "readManyOld").unsafeRunSync()
+    testReadOldItemsOnly[IO](    limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "readOld").unsafeRunSync()
+    testAddNewItemsOnly[IO](     limitTriaMapSize, multiThreadMode, experimentCount, resultDir, "writeNew").unsafeRunSync()
     println(s"""HTML-files with Google Visualization graphics are saved in this path: <$resultDir>.""")
   }
 }
