@@ -30,7 +30,7 @@ def defaultPlugins: Project => Project =
 
 lazy val sharedSettings = Seq(
   organization := "RChain",
-  scalaVersion := "2.13.3",
+  scalaVersion := "2.12.15",
 
   headerLicense := Some(
     HeaderLicense.Custom(
