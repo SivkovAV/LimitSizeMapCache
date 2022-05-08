@@ -1,12 +1,12 @@
-package stereo.rchain.mapcache
+package stereo.rchain.mapcache.cacheImplamentations
 
+import java.util.concurrent.locks.ReentrantReadWriteLock
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
-import java.util.concurrent.locks.ReentrantReadWriteLock
 
 
 /**
-  * [[TrieMap]] with limit size. Not multithread-safe (see [[LimitSizeTrieMap]]).
+  * [[TrieMap]] with limit size. Not multithread-safe (see [[ImperativeCache]]).
  *
   * @param maxSize - items count after which old records should be cleared
   * Inner fields description:
@@ -118,7 +118,7 @@ class LimitSizeTrieMapThreadUnsafe[A, B](private val maxSize: Int) {
  *
  * @param maxSize - items count after which old records should be cleared
  */
-final class LimitSizeTrieMap[A, B](val maxSize: Int) extends LimitSizeTrieMapThreadUnsafe[A, B](maxSize) {
+final class ImperativeCache[A, B](val maxSize: Int) extends LimitSizeTrieMapThreadUnsafe[A, B](maxSize) {
   val lock = new ReentrantReadWriteLock()
   override def get(key: A): Option[B] = {
     lock.writeLock().lock()
