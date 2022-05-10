@@ -2,7 +2,6 @@ package stereo.rchain.mapcache.cacheImplamentations
 
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
-import cats.syntax.all._
 
 
 /**
@@ -117,21 +116,14 @@ case class CustomCacheState[K, V](val sizeLimit: Int, val reducingFactor: Double
  */
 case class CustomCache[F[_]: Sync, K, V](val state: Ref[F, CustomCacheState[K, V]]) {
   def get(key: K): F[Option[V]] = {
-    for {
-      value <- state.modify(state => {
-        val mayBeValue = state.records.get(key)
-        mayBeValue match {
-          case None => (state, None)
-          case _ => (state.moveRecordOnTop(key), Some(mayBeValue.get.value))
-        }
-      })
-
-    } yield(value)
+    state.modify(state => {
+      val mayBeValue = state.records.get(key)
+      mayBeValue match {
+        case None => (state, None)
+        case _ => (state.moveRecordOnTop(key), Some(mayBeValue.get.value))
+      }
+    })
   }
 
-  def set(key: K, value: V): F[Unit] = {
-    for {
-      _ <- state.update(state => {state.updateOnTop(key, value).cleanOldRecords()})
-    } yield()
-  }
+  def set(key: K, value: V): F[Unit] = state.update(state => {state.updateOnTop(key, value).cleanOldRecords()})
 }
