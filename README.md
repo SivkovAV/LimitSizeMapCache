@@ -2,11 +2,13 @@
 
 ### Overview
 `LimitSizeMapCache` is associative array with a fixed maximum number of items (elements).
-it's convenient to use this as cache for any kind of associative arrays.
+`LimitSizeMapCache` is designed to store the most frequently used items.
+This means that the `LimitSizeMapCache` remembers how long ago each of its item was used (written or read).
+It's convenient to use this as cache for any kind of associative arrays.
 `LimitSizeMapCache` is thread safe.
 `LimitSizeMapCache` based on `scala.collection.immutable.Map` and `cats.effect.concurrent.Ref` so it's work without locks.
 
-like any associative array, this array is designed to store key-value pairs of elements.
+Like any associative array, this array is designed to store key-value pairs of elements.
 `Key` - is unique value for all items stored in `LimitSizeMapCache`.
 `Value` - user value stored in `LimitSizeMapCache`.
 
@@ -36,7 +38,11 @@ for {
   _ <- cache.set(5, "5")                            # cache: (3->"3", 4->"4", 5->"5")
   _ <- cache.set(6, "6")                            # cache: (3->"3", 4->"4", 5->"5", 6->"6")
   _ <- cache.set(7, "7")                            # cache: (6->"6", 7->"7")
-  _ <- cache.get(8)                                 # cache: (6->"6", 7->"7")
+  _ <- cache.set(8, "8")                            # cache: (6->"6", 7->"7", 8->"8")
+  _ <- cache.get(9)                                 # cache: (6->"6", 7->"7", 8->"8")
+  _ <- cache.get(8)                                 # cache: (6->"6", 7->"7", 8->"8")
+  _ <- cache.get(6)                                 # cache: (7->"7", 8->"8", 6->"6")
+  
 } yield()
 ```
 
