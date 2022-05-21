@@ -46,6 +46,14 @@ case class LimitSizeMapCacheState[K, V](val maxItemCount: Int, val itemCountAfte
   }
   implicit def mapToMap(state: Map[K, LimitSizeMapStateItem[K, V]]): ExtendedMap = new ExtendedMap(state)
 
+  def modify(key: K): (LimitSizeMapCacheState[K, V], Option[V]) = {
+    val mayBeValue = items.get(key)
+    mayBeValue match {
+      case None => (this, None)
+      case _ => (moveRecordOnTop(key), Some(mayBeValue.get.value))
+    }
+  }
+
   def update(key: K, value: V): LimitSizeMapCacheState[K, V] = {
     updateOnTop(key, value).cleanOldItems()
   }
@@ -71,7 +79,7 @@ case class LimitSizeMapCacheState[K, V](val maxItemCount: Int, val itemCountAfte
     LimitSizeMapCacheState(maxItemCount, itemCountAfterSizeCorrection, newRecords, mayBeTopKey, mayBeBottomKey)
   }
 
-  def moveRecordOnTop(key: K): LimitSizeMapCacheState[K, V] = {
+  private def moveRecordOnTop(key: K): LimitSizeMapCacheState[K, V] = {
     if (mayBeTopKey.isDefined && mayBeTopKey.get==key)
       this
     else {
@@ -122,15 +130,6 @@ case class LimitSizeMapCacheState[K, V](val maxItemCount: Int, val itemCountAfte
  * @param stateRef - instance of [[LimitSizeMapCacheState]] covered in cats.Ref for multi thread safety
  */
 case class LimitSizeMapCache[F[_]: Sync, K, V](val stateRef: Ref[F, LimitSizeMapCacheState[K, V]]) {
-  def get(key: K): F[Option[V]] = {
-    stateRef.modify(state => {
-      val mayBeValue = state.items.get(key)
-      mayBeValue match {
-        case None => (state, None)
-        case _ => (state.moveRecordOnTop(key), Some(mayBeValue.get.value))
-      }
-    })
-  }
-
+  def get(key: K): F[Option[V]] = stateRef.modify(state => state.modify(key))
   def set(key: K, value: V): F[Unit] = stateRef.update(state => {state.update(key, value)})
 }

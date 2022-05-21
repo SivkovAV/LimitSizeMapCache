@@ -48,6 +48,7 @@ class CustomCacheItemSpec extends AnyFlatSpec {
 class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
   val cleanOldItemsMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("cleanOldItems"))
   val updateOnTopMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("updateOnTop"))
+  val moveRecordOnTopMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("moveRecordOnTop"))
   val setValueByKeyMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("setValueByKey"))
 
   "cleanOldRecords()" should "not clean old items in empty LimitSizeMapCacheState" in {
@@ -115,7 +116,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       4 -> LimitSizeMapStateItem[Int, String]("4", Some(3), None))
     val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(4))
 
-    val dstState = srcState.moveRecordOnTop(0)
+    val dstState = srcState invokePrivate  moveRecordOnTopMethod(0)
 
     assert(dstState == srcState)
   }
@@ -140,7 +141,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       4 -> LimitSizeMapStateItem[Int, String]("4", Some(3), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(4))
 
-    val dstState = srcState.moveRecordOnTop(1)
+    val dstState = srcState invokePrivate  moveRecordOnTopMethod(1)
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -166,7 +167,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       4 -> LimitSizeMapStateItem[Int, String]("4", Some(3), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(2), Some(4))
 
-    val dstState = srcState.moveRecordOnTop(2)
+    val dstState = srcState invokePrivate  moveRecordOnTopMethod(2)
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -192,7 +193,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       4 -> LimitSizeMapStateItem[Int, String]("4", Some(2), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(3), Some(4))
 
-    val dstState = srcState.moveRecordOnTop(3)
+    val dstState = srcState invokePrivate  moveRecordOnTopMethod(3)
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -218,7 +219,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       3 -> LimitSizeMapStateItem[Int, String]("3", Some(2), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(4), Some(3))
 
-    val dstState = srcState.moveRecordOnTop(key=4)
+    val dstState = srcState invokePrivate  moveRecordOnTopMethod(4)
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -238,7 +239,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       0 -> LimitSizeMapStateItem[Int, String]("0", Some(1), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(0))
 
-    val dstState = srcState.moveRecordOnTop(key=1)
+    val dstState = srcState invokePrivate  moveRecordOnTopMethod(1)
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -453,8 +454,8 @@ class CustomCacheSpec extends AnyFlatSpec {
         item <- cache.get(0)
         _ = assert(item.isEmpty)
         state <- cache.stateRef.get
-        records = state.items
-        _ = assert(records.isEmpty)
+        items = state.items
+        _ = assert(items.isEmpty)
         _ = assert(state.mayBeTopKey.isEmpty)
         _ = assert(state.mayBeBottomKey.isEmpty)
       } yield ()
@@ -478,11 +479,11 @@ class CustomCacheSpec extends AnyFlatSpec {
         item1 <- cache.get(1)
         _ = assert(item1.isEmpty)
         state <- cache.stateRef.get
-        records = state.items
-        _ = assert(records.size == 1)
-        _ = assert(records.contains(0))
-        _ = assert(records(0).value == "0")
-        _ = assert(records(0).mayBeNextKey.isEmpty && records(0).mayBePrevKey.isEmpty)
+        items = state.items
+        _ = assert(items.size == 1)
+        _ = assert(items.contains(0))
+        _ = assert(items(0).value == "0")
+        _ = assert(items(0).mayBeNextKey.isEmpty && items(0).mayBePrevKey.isEmpty)
         _ = assert(state.mayBeTopKey.isDefined && state.mayBeBottomKey.isDefined)
         _ = assert(state.mayBeTopKey.contains(0) && state.mayBeBottomKey.contains(0))
       } yield ()
@@ -509,12 +510,12 @@ class CustomCacheSpec extends AnyFlatSpec {
         item2 <- cache.get(2)
         _ = assert(item2.isEmpty)
         state <- cache.stateRef.get
-        records = state.items
-        _ = assert(records.size == 2)
-        _ = assert(records.contains(0) && records.contains(1))
-        _ = assert(records(0).value == "0" && records(1).value == "1")
-        _ = assert(records(1).mayBeNextKey.isEmpty && records(1).mayBePrevKey.isDefined)
-        _ = assert(records(0).mayBeNextKey.isDefined && records(0).mayBePrevKey.isEmpty)
+        items = state.items
+        _ = assert(items.size == 2)
+        _ = assert(items.contains(0) && items.contains(1))
+        _ = assert(items(0).value == "0" && items(1).value == "1")
+        _ = assert(items(1).mayBeNextKey.isEmpty && items(1).mayBePrevKey.isDefined)
+        _ = assert(items(0).mayBeNextKey.isDefined && items(0).mayBePrevKey.isEmpty)
         _ = assert(state.mayBeTopKey.isDefined && state.mayBeBottomKey.isDefined)
         _ = assert(state.mayBeTopKey.contains(1) && state.mayBeBottomKey.contains(0))
       } yield ()
@@ -564,9 +565,9 @@ class CustomCacheSpec extends AnyFlatSpec {
         _ <- cache.set(4, "4")
 
         state <- cache.stateRef.get
-        records = state.items
-        _ = assert(records.contains(0) && records.contains(1) && records.contains(2) && records.contains(3) && records.contains(4))
-        _ = assert(records(0).value == "0" && records(1).value == "1" && records(2).value == "2" && records(3).value == "3" && records(4).value == "4")
+        items = state.items
+        _ = assert(items.contains(0) && items.contains(1) && items.contains(2) && items.contains(3) && items.contains(4))
+        _ = assert(items(0).value == "0" && items(1).value == "1" && items(2).value == "2" && items(3).value == "3" && items(4).value == "4")
         _ = assert(state.mayBeTopKey.contains(4))
         _ = assert(state.mayBeBottomKey.contains(0))
       } yield ()
@@ -591,10 +592,10 @@ class CustomCacheSpec extends AnyFlatSpec {
         _ <- cache.set(5, "5")
 
         state <- cache.stateRef.get
-        records = state.items
-        _ = assert(!records.contains(0) && !records.contains(1) && !records.contains(2))
-        _ = assert(records.contains(3) && records.contains(4) && records.contains(5))
-        _ = assert(records(3).value == "3" && records(4).value == "4" && records(5).value == "5")
+        items = state.items
+        _ = assert(!items.contains(0) && !items.contains(1) && !items.contains(2))
+        _ = assert(items.contains(3) && items.contains(4) && items.contains(5))
+        _ = assert(items(3).value == "3" && items(4).value == "4" && items(5).value == "5")
         _ = assert(state.mayBeTopKey.contains(5))
         _ = assert(state.mayBeBottomKey.contains(3))
       } yield ()
