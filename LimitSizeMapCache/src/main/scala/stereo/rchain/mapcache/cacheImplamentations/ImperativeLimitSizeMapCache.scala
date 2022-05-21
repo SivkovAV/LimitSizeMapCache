@@ -8,21 +8,18 @@ import scala.collection.concurrent.TrieMap
 /**
   * [[TrieMap]] with limit size. Not multithread-safe (see [[ImperativeLimitSizeMapCache]]).
  *
-  * @param maxSize - items count after which old items should be cleared
-  * Inner fields description:
-  * sizeLimit - verified version of [[maxSize]]
-  * cache     - TrieMap[key, (value, Option[nextKey], Option[prevKey])]; nextKey closer to mayBeTopKey; prevKey closer to mayBeBottomKey;
-  * mayBeTopKey    - last read item's key
-  * mayBeBottomKey - most old item's key
-  */
+ * @param maxItemCount - items count after which old items should be cleared
+ * @param itemCountAfterSizeCorrection - items count after clearing
+ * [[cache]]     - TrieMap[key, (value, Option[nextKey], Option[prevKey])]; nextKey closer to mayBeTopKey; prevKey closer to mayBeBottomKey;
+ * [[mayBeTopKey]]    - last read item's key
+ * [[mayBeBottomKey]] - most old item's key
+ */
 @SuppressWarnings(Array("org.wartremover.warts.Var", "org.wartremover.warts.NonUnitStatements"))
-class LimitSizeTrieMapThreadUnsafe[A, B](private val maxSize: Int) {
-  private val sizeLimit: Int = prepareMaxSize(maxSize)
+class LimitSizeTrieMapThreadUnsafe[A, B](private val maxItemCount: Int,
+                                         private val itemCountAfterSizeCorrection: Int) {
   private val cache: TrieMap[A, (B, Option[A], Option[A])] = TrieMap.empty[A, (B, Option[A], Option[A])]
   private var mayBeTopKey: Option[A] = None
   private var mayBeBottomKey: Option[A] = None
-
-  private def prepareMaxSize(maxSize: Int): Int = if (maxSize <= 0) 1 else maxSize
 
   def get(key: A): Option[B] = {
     val optionValue = cache.get(key)
@@ -105,8 +102,8 @@ class LimitSizeTrieMapThreadUnsafe[A, B](private val maxSize: Int) {
     }
 
   private def clearOldItems(): Option[A] =
-    if (sizeLimit < cache.size) {
-      val (oldItems, nextBottomKey) = prepareOldItems(sizeLimit / 3, mayBeBottomKey, Nil)
+    if (maxItemCount < cache.size) {
+      val (oldItems, nextBottomKey) = prepareOldItems(maxItemCount - itemCountAfterSizeCorrection, mayBeBottomKey, Nil)
       oldItems.foreach(cache.remove)
       nextBottomKey
     } else
@@ -118,7 +115,8 @@ class LimitSizeTrieMapThreadUnsafe[A, B](private val maxSize: Int) {
  *
  * @param maxSize - items count after which old items should be cleared
  */
-final class ImperativeLimitSizeMapCache[A, B](val maxSize: Int) extends LimitSizeTrieMapThreadUnsafe[A, B](maxSize) {
+final class ImperativeLimitSizeMapCache[A, B](val maxItemCount: Int, val itemCountAfterSizeCorrection: Int)
+  extends LimitSizeTrieMapThreadUnsafe[A, B](maxItemCount, itemCountAfterSizeCorrection) {
   val lock = new ReentrantReadWriteLock()
   override def get(key: A): Option[B] = {
     lock.writeLock().lock()

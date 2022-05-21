@@ -30,9 +30,9 @@ object CacheExperiments {
     def set(key: Array[Byte], value: Int): F[Unit]
   }
 
-  class ImperativeTestCache[F[_]: Sync](val size: Int) extends AbstractTestCache[F] {
+  class ImperativeTestCache[F[_]: Sync](val maxItemCount: Int, val itemCountAfterSizeCorrection: Int) extends AbstractTestCache[F] {
     override val name: String = "ImperativeLimitSizeMapCache"
-    private val cache = new ImperativeLimitSizeMapCache[Array[Byte], Int](size)
+    private val cache = new ImperativeLimitSizeMapCache[Array[Byte], Int](maxItemCount, itemCountAfterSizeCorrection)
 
     override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
 
@@ -146,7 +146,7 @@ object CacheExperiments {
   def prepareCaches[F[_]: Sync](maxItemCount: Int, itemCountAfterSizeCorrection: Int): F[List[AbstractTestCache[F]]] = {
     List(
       new RegularTrieMapTestCache,
-      new ImperativeTestCache(maxItemCount),
+      new ImperativeTestCache(maxItemCount, itemCountAfterSizeCorrection),
       new LimitSizeTestCache[F](maxItemCount, itemCountAfterSizeCorrection),
       new UnlimitedLimitSizeTestCache[F](maxItemCount)
       ).pure

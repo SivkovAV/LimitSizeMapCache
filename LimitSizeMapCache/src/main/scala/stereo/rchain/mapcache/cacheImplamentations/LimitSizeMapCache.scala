@@ -139,6 +139,8 @@ case class LimitSizeMapCache[F[_]: Sync, K, V](val stateRef: Ref[F, LimitSizeMap
 
 object LimitSizeMapCache {
   def apply[F[_]: Sync, K, V](maxItemCount: Int, itemCountAfterSizeCorrection: Int): F[LimitSizeMapCache[F, K, V]] = {
+    assert(maxItemCount > itemCountAfterSizeCorrection)
+    assert(itemCountAfterSizeCorrection >= 0)
     for {
       ref <- Ref.of(LimitSizeMapCacheState[K, V](maxItemCount, itemCountAfterSizeCorrection))
       cache = new LimitSizeMapCache(ref)
