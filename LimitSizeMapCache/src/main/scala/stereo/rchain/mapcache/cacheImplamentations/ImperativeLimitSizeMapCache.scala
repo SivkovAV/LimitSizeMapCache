@@ -113,7 +113,7 @@ class LimitSizeTrieMapThreadUnsafe[A, B](private val maxItemCount: Int,
 /**
  * [[TrieMap]] with limit size. Multi thread version of [[LimitSizeTrieMapThreadUnsafe]] class.
  *
- * @param maxSize - items count after which old items should be cleared
+ * @param maxItemCount - items count after which old items should be cleared
  */
 final class ImperativeLimitSizeMapCache[A, B](val maxItemCount: Int, val itemCountAfterSizeCorrection: Int)
   extends LimitSizeTrieMapThreadUnsafe[A, B](maxItemCount, itemCountAfterSizeCorrection) {
