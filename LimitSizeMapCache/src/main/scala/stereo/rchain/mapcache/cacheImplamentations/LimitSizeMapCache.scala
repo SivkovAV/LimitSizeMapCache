@@ -142,6 +142,6 @@ object LimitSizeMapCache {
     for {
       ref <- Ref.of(LimitSizeMapCacheState[K, V](maxItemCount, itemCountAfterSizeCorrection))
       cache = new LimitSizeMapCache(ref)
-    } yield(cache)
+    } yield (cache)
   }
 }

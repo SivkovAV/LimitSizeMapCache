@@ -144,12 +144,12 @@ object CacheExperiments {
   }
 
   def prepareCaches[F[_]: Sync](maxItemCount: Int, itemCountAfterSizeCorrection: Int): F[List[AbstractTestCache[F]]] = {
-    //val triaMap1 = new RegularTrieMapTestCache
-    //val triaMap2 = new ImperativeTestCache(limitTriaMapSize)
-    val triaMap3 = new LimitSizeTestCache[F](maxItemCount, itemCountAfterSizeCorrection)
-    val triaMap4 = new UnlimitedLimitSizeTestCache[F](maxItemCount)
-
-    List(/*triaMap1, triaMap2,*/ triaMap3, triaMap4).pure
+    List(
+      new RegularTrieMapTestCache,
+      new ImperativeTestCache(maxItemCount),
+      new LimitSizeTestCache[F](maxItemCount, itemCountAfterSizeCorrection),
+      new UnlimitedLimitSizeTestCache[F](maxItemCount)
+      ).pure
   }
 
   def repeat(multiThreadMode: Boolean, experimentCount: Int, process: (Unit) => List[Long]): List[List[Long]] = {
