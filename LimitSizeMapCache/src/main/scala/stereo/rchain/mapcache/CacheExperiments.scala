@@ -15,6 +15,14 @@ import stereo.rchain.mapcache.cacheImplamentations.{ImperativeLimitSizeMapCache,
 
 
 object CacheExperiments {
+
+  case class ExperimentParameters(val maxItemCount: Int,
+                                  val itemCountAfterSizeCorrection: Int,
+                                  val multiThreadMode: Boolean,
+                                  val experimentCount: Int,
+                                  val notImportantExperimentsCount: Int,
+                                  val resultFileDir: String) {}
+
   abstract class AbstractTestCache[F[_]: Sync] {
     val name: String
 
@@ -24,7 +32,7 @@ object CacheExperiments {
   }
 
   class ImperativeTestCache[F[_]: Sync](val size: Int) extends AbstractTestCache[F] {
-    override val name: String = "ImperativeCache"
+    override val name: String = "ImperativeLimitSizeMapCache"
     private val cache = new ImperativeLimitSizeMapCache[Array[Byte], Int](size)
 
     override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
@@ -42,12 +50,8 @@ object CacheExperiments {
   }
 
   class LimitSizeTestCache[F[_]: Sync](val maxItemCount: Int, val itemCountAfterSizeCorrection: Int) extends AbstractTestCache[F] {
-    private val beginState = LimitSizeMapCacheState[Array[Byte], Int](maxItemCount, itemCountAfterSizeCorrection)
-    override val name: String = "CustomCache"
-    private val cacheRef = for {
-      ref <- Ref.of[F, LimitSizeMapCacheState[Array[Byte], Int]](beginState)
-      cache = LimitSizeMapCache(ref)
-    } yield(cache)
+    override val name: String = "LimitSizeMapCache"
+    private val cacheRef = LimitSizeMapCache[F, Array[Byte], Int](maxItemCount, itemCountAfterSizeCorrection)
 
     override def get(key: Array[Byte]): F[Option[Int]] = for {cache <- cacheRef; value <- cache.get(key)} yield(value)
 
@@ -55,13 +59,9 @@ object CacheExperiments {
   }
 
   class UnlimitedCustomTestCache[F[_]: Sync](val maxItemCount: Int) extends AbstractTestCache[F] {
-    private val size = maxItemCount * maxItemCount
-    private val beginState = LimitSizeMapCacheState[Array[Byte], Int](size, size)
-    override val name: String = "UnlimitedCustomCache"
-    private val cacheRef = for {
-      ref <- Ref.of[F, LimitSizeMapCacheState[Array[Byte], Int]](beginState)
-      cache = LimitSizeMapCache(ref)
-    } yield(cache)
+    private val pseudoUnlimitedSize = maxItemCount * maxItemCount
+    override val name: String = "UnlimitedLimitSizeMapCache"
+    private val cacheRef = LimitSizeMapCache[F, Array[Byte], Int](pseudoUnlimitedSize, pseudoUnlimitedSize)
 
     override def get(key: Array[Byte]): F[Option[Int]] = for {cache <- cacheRef; value <- cache.get(key)} yield(value)
 
@@ -169,60 +169,51 @@ object CacheExperiments {
     s"""limitTriaMapSize: $limitTriaMapSize; multiThreadMode: $multiThreadMode"""
   }
 
-  def testReadManyOldItemsOnly[F[_]: Sync](maxItemCount: Int, itemCountAfterSizeCorrection: Int,
-                                           multiThreadMode: Boolean,
-                                           experimentCount: Int, notImportantExperimentsCount: Int,
-                                           resultFileDir: String, fileName: String): F[Unit] = {
+  def testReadManyOldItemsOnly[F[_]: Sync](params: ExperimentParameters, fileName: String): F[Unit] = {
     println("testReadManyOldItemsOnly")
     val scale = 1000
-    val ItemsCount = maxItemCount * scale
+    val ItemsCount = params.maxItemCount * scale
     for {
-      caches <- prepareCaches[F](maxItemCount, itemCountAfterSizeCorrection)
+      caches <- prepareCaches[F](params.maxItemCount, params.itemCountAfterSizeCorrection)
       queue = prepareGetEvents(ItemsCount)
 
       // setup cache data
       _ = calculateCachesWorkTime[F](caches, prepareSetEvents(ItemsCount))
-      periods = repeat(multiThreadMode, experimentCount, _ => {calculateCachesWorkTime[F](caches, queue)})
-      userPeriods = periods.slice(notImportantExperimentsCount, experimentCount)
-      description = getDescription(maxItemCount, multiThreadMode)
-      _ = writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, userPeriods, description)
-      //_ = writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, userPeriods, description)
+      periods = repeat(params.multiThreadMode, params.experimentCount, _ => {calculateCachesWorkTime[F](caches, queue)})
+      userPeriods = periods.slice(params.notImportantExperimentsCount, params.experimentCount)
+      description = getDescription(params.maxItemCount, params.multiThreadMode)
+      _ = writeLineChartFile(params.resultFileDir, addThreadModeToFilename(fileName, params.multiThreadMode), caches, userPeriods, description)
+      //_ = writeBarChartFile(params.resultFileDir, addThreadModeToFilename(fileName, params.multiThreadMode), caches, userPeriods, description)
     } yield()
   }
 
-  def testReadOldItemsOnly[F[_]: Sync](maxItemCount: Int, itemCountAfterSizeCorrection: Int,
-                                       multiThreadMode: Boolean,
-                                       experimentCount: Int, notImportantExperimentsCount: Int,
-                                       resultFileDir: String, fileName: String): F[Unit] = {
+  def testReadOldItemsOnly[F[_]: Sync](params: ExperimentParameters, fileName: String): F[Unit] = {
     println("testReadOldItemsOnly")
     val scale = 1
-    val ItemsCount = maxItemCount * scale
+    val ItemsCount = params.maxItemCount * scale
     for {
-      caches <- prepareCaches[F](maxItemCount, itemCountAfterSizeCorrection)
-      queue = prepareGetEvents(maxItemCount)
+      caches <- prepareCaches[F](params.maxItemCount, params.itemCountAfterSizeCorrection)
+      queue = prepareGetEvents(params.maxItemCount)
 
       // setup cache data
       _ = calculateCachesWorkTime[F](caches, prepareSetEvents(ItemsCount))
-      periods = repeat(multiThreadMode, experimentCount, (_:Unit) => calculateCachesWorkTime[F](caches, queue))
-      userPeriods = periods.slice(notImportantExperimentsCount, experimentCount)
-      description = getDescription(maxItemCount, multiThreadMode)
-      _ = writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, userPeriods, description)
-      //_ = writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, userPeriods, description)
+      periods = repeat(params.multiThreadMode, params.experimentCount, (_:Unit) => calculateCachesWorkTime[F](caches, queue))
+      userPeriods = periods.slice(params.notImportantExperimentsCount, params.experimentCount)
+      description = getDescription(params.maxItemCount, params.multiThreadMode)
+      _ = writeLineChartFile(params.resultFileDir, addThreadModeToFilename(fileName, params.multiThreadMode), caches, userPeriods, description)
+      //_ = writeBarChartFile(params.resultFileDir, addThreadModeToFilename(fileName, params.multiThreadMode), caches, userPeriods, description)
     } yield()
   }
 
-  def testAddNewItemsOnly[F[_]: Sync](maxItemCount: Int, itemCountAfterSizeCorrection: Int,
-                                      multiThreadMode: Boolean,
-                                      experimentCount: Int, notImportantExperimentsCount: Int,
-                                      resultFileDir: String, fileName: String): F[Unit] = {
+  def testAddNewItemsOnly[F[_]: Sync](params: ExperimentParameters, fileName: String): F[Unit] = {
     println("testAddNewItemsOnly")
     for {
-      caches <- prepareCaches[F](maxItemCount, itemCountAfterSizeCorrection)
-      periods = repeat(multiThreadMode, experimentCount, (_:Unit) => {calculateCachesWorkTime[F](caches, prepareSetEvents(maxItemCount))})
-      userPeriods = periods.slice(notImportantExperimentsCount, experimentCount)
-      description = getDescription(maxItemCount, multiThreadMode)
-      _ = writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, userPeriods, description)
-      //_ = writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, userPeriods, description)
+      caches <- prepareCaches[F](params.maxItemCount, params.itemCountAfterSizeCorrection)
+      periods = repeat(params.multiThreadMode, params.experimentCount, (_:Unit) => {calculateCachesWorkTime[F](caches, prepareSetEvents(params.maxItemCount))})
+      userPeriods = periods.slice(params.notImportantExperimentsCount, params.experimentCount)
+      description = getDescription(params.maxItemCount, params.multiThreadMode)
+      _ = writeLineChartFile(params.resultFileDir, addThreadModeToFilename(fileName, params.multiThreadMode), caches, userPeriods, description)
+      //_ = writeBarChartFile(params.resultFileDir, addThreadModeToFilename(fileName, params.multiThreadMode), caches, userPeriods, description)
     } yield()
   }
 
@@ -235,13 +226,13 @@ object CacheExperiments {
     val notImportantExperimentsCount = 100
     val resultDir = "./resultHTML"
 
+    val parameters = ExperimentParameters(maxItemCount, itemCountAfterSizeCorrection,
+      multiThreadMode, experimentCount, notImportantExperimentsCount, resultDir)
+
     println("This program compare performance of LimitSizeCache's implementations and represent results in HTML-files.")
-    testReadManyOldItemsOnly[Task](maxItemCount, itemCountAfterSizeCorrection,
-      multiThreadMode, experimentCount, notImportantExperimentsCount, resultDir, "readManyOld").runSyncUnsafe()
-    testReadOldItemsOnly[Task](maxItemCount, itemCountAfterSizeCorrection,
-      multiThreadMode, experimentCount, notImportantExperimentsCount, resultDir, "readOld").runSyncUnsafe()
-    testAddNewItemsOnly[Task](maxItemCount, itemCountAfterSizeCorrection,
-      multiThreadMode, experimentCount, notImportantExperimentsCount, resultDir, "writeNew").runSyncUnsafe()
+    testReadManyOldItemsOnly[Task](parameters, "readManyOld").runSyncUnsafe()
+    testReadOldItemsOnly[Task](parameters, "readOld").runSyncUnsafe()
+    testAddNewItemsOnly[Task](parameters, "writeNew").runSyncUnsafe()
     println(s"""HTML-files with Google Visualization graphics are saved in this path: <$resultDir>.""")
   }
 }

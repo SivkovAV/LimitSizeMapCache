@@ -470,10 +470,8 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
     def test[F[_] : Sync](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
-      val beginState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
       for {
-        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](beginState)
-        cache = LimitSizeMapCache(ref)
+        cache <- LimitSizeMapCache[F, Int, String](maxItemCount, itemCountAfterSizeCorrection)
 
         item <- cache.get(0)
         _ = assert(item.isEmpty)
@@ -492,10 +490,8 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
     def test[F[_] : Sync](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
-      val beginState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
       for {
-        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](beginState)
-        cache = LimitSizeMapCache(ref)
+        cache <- LimitSizeMapCache[F, Int, String](maxItemCount, itemCountAfterSizeCorrection)
         _ <- cache.set(0, "0")
 
         item0 <- cache.get(0)
@@ -520,10 +516,8 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
     def test[F[_] : Sync](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
-      val beginState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
       for {
-        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](beginState)
-        cache = LimitSizeMapCache(ref)
+        cache <- LimitSizeMapCache[F, Int, String](maxItemCount, itemCountAfterSizeCorrection)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
 
@@ -552,10 +546,8 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
     def test[F[_] : Sync](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
-      val beginState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
       for {
-        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](beginState)
-        cache = LimitSizeMapCache(ref)
+        cache <- LimitSizeMapCache[F, Int, String](maxItemCount, itemCountAfterSizeCorrection)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
         srcCache <- cache.stateRef.get
@@ -578,10 +570,8 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
     def test[F[_] : Sync](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
-      val beginState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
       for {
-        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](beginState)
-        cache = LimitSizeMapCache(ref)
+        cache <- LimitSizeMapCache[F, Int, String](maxItemCount, itemCountAfterSizeCorrection)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
         _ <- cache.set(2, "2")
@@ -604,10 +594,8 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
     def test[F[_] : Sync](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
-      val beginState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
       for {
-        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](beginState)
-        cache = LimitSizeMapCache(ref)
+        cache <- LimitSizeMapCache[F, Int, String](maxItemCount, itemCountAfterSizeCorrection)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
         _ <- cache.set(2, "2")

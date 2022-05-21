@@ -2,6 +2,7 @@ package stereo.rchain.mapcache.cacheImplamentations
 
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
+import cats.syntax.all._
 
 
 /**
@@ -133,4 +134,14 @@ case class LimitSizeMapCacheState[K, V](val maxItemCount: Int, val itemCountAfte
 case class LimitSizeMapCache[F[_]: Sync, K, V](val stateRef: Ref[F, LimitSizeMapCacheState[K, V]]) {
   def get(key: K): F[Option[V]] = stateRef.modify(state => state.modify(key))
   def set(key: K, value: V): F[Unit] = stateRef.update(state => {state.update(key, value)})
+}
+
+
+object LimitSizeMapCache {
+  def apply[F[_]: Sync, K, V](maxItemCount: Int, itemCountAfterSizeCorrection: Int): F[LimitSizeMapCache[F, K, V]] = {
+    for {
+      ref <- Ref.of(LimitSizeMapCacheState[K, V](maxItemCount, itemCountAfterSizeCorrection))
+      cache = new LimitSizeMapCache(ref)
+    } yield(cache)
+  }
 }
