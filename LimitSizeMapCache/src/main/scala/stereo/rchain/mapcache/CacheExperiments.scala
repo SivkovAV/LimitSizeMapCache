@@ -58,7 +58,7 @@ object CacheExperiments {
     override def set(key: Array[Byte], value: Int): F[Unit] = for {cache <- cacheRef; _ <- cache.set(key, value)} yield()
   }
 
-  class UnlimitedCustomTestCache[F[_]: Sync](val maxItemCount: Int) extends AbstractTestCache[F] {
+  class UnlimitedLimitSizeTestCache[F[_]: Sync](val maxItemCount: Int) extends AbstractTestCache[F] {
     private val pseudoUnlimitedSize = maxItemCount * maxItemCount
     override val name: String = "UnlimitedLimitSizeMapCache"
     private val cacheRef = LimitSizeMapCache[F, Array[Byte], Int](pseudoUnlimitedSize, pseudoUnlimitedSize)
@@ -148,7 +148,7 @@ object CacheExperiments {
     //val triaMap1 = new RegularTrieMapTestCache
     //val triaMap2 = new ImperativeTestCache(limitTriaMapSize)
     val triaMap3 = new LimitSizeTestCache[F](maxItemCount, itemCountAfterSizeCorrection)
-    val triaMap4 = new UnlimitedCustomTestCache[F](maxItemCount)
+    val triaMap4 = new UnlimitedLimitSizeTestCache[F](maxItemCount)
 
     List(/*triaMap1, triaMap2,*/ triaMap3, triaMap4).pure
   }
