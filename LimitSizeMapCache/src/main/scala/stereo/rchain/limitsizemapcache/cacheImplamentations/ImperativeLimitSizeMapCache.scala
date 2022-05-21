@@ -1,8 +1,3 @@
-/*
- * Copyright (c) 2020 Aleksei Sivkov.
- * All rights reserved.
- */
-
 package stereo.rchain.limitsizemapcache.cacheImplamentations
 
 import java.util.concurrent.locks.ReentrantReadWriteLock
