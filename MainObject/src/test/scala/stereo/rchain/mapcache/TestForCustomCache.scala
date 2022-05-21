@@ -75,7 +75,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
     assert(srcState == dstState)
   }
 
-  "cleanOldItems()" should "clean old items" in {
+  "cleanOldItems()" should "clean old items until itemCountAfterSizeCorrection" in {
     val maxItemCount = 5
     val itemCountAfterSizeCorrection = 3
 
@@ -96,12 +96,13 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       0 -> LimitSizeMapItemValue[Int, String]("0", None, Some(1)),
       1 -> LimitSizeMapItemValue[Int, String]("1", Some(0), Some(2)),
       2 -> LimitSizeMapItemValue[Int, String]("2", Some(1), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(0), Some(2))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(0), Some(2))
 
     val dstState = srcState invokePrivate cleanOldItemsMethod()
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
+    assert(dstState.items.size == itemCountAfterSizeCorrection)
   }
 
   "moveItemOnTop()" should "not move top item on top (should stay LimitSizeMapCacheState without modifications)" in {
