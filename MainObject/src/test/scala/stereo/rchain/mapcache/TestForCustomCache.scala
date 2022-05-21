@@ -12,7 +12,7 @@ import stereo.rchain.mapcache.cacheImplamentations._
 
 class CustomCacheItemSpec extends AnyFlatSpec {
   def checkNextKey(newMayBeNextKey: Option[Int], oldMayBeNextKey: Option[Int]): Unit = {
-    val srcCacheItem = CustomCacheItem[Int, String](value="this is string value", mayBeNextKey=oldMayBeNextKey, mayBePrevKey=None)
+    val srcCacheItem = LimitSizeMapCacheItem[Int, String](value="this is string value", mayBeNextKey=oldMayBeNextKey, mayBePrevKey=None)
     val dstCacheItem = srcCacheItem.setNextKey(newMayBeNextKey)
     assert(srcCacheItem.value == dstCacheItem.value)
     assert(newMayBeNextKey == dstCacheItem.mayBeNextKey)
@@ -20,7 +20,7 @@ class CustomCacheItemSpec extends AnyFlatSpec {
     ()
   }
 
-  "CacheItem::setNextKey" should "modify next key" in {
+  "LimitSizeMapCacheItem::setNextKey" should "modify next key" in {
     checkNextKey(newMayBeNextKey=None,    oldMayBeNextKey=None)
     checkNextKey(newMayBeNextKey=Some(1), oldMayBeNextKey=None)
     checkNextKey(newMayBeNextKey=Some(1), oldMayBeNextKey=Some(2))
@@ -28,7 +28,7 @@ class CustomCacheItemSpec extends AnyFlatSpec {
   }
 
   def checkPrevKey(newMayBeNextKey: Option[Int], oldMayBeNextKey: Option[Int]): Unit = {
-    val srcCacheItem = CustomCacheItem[Int, String](value="this is string value", mayBeNextKey=None, mayBePrevKey=oldMayBeNextKey)
+    val srcCacheItem = LimitSizeMapCacheItem[Int, String](value="this is string value", mayBeNextKey=None, mayBePrevKey=oldMayBeNextKey)
     val dstCacheItem = srcCacheItem.setPrevKey(newMayBeNextKey)
     assert(srcCacheItem.value == dstCacheItem.value)
     assert(srcCacheItem.mayBeNextKey == dstCacheItem.mayBeNextKey)
@@ -36,7 +36,7 @@ class CustomCacheItemSpec extends AnyFlatSpec {
     ()
   }
 
-  "CacheItem::setPrevKey" should "set next key to None" in {
+  "LimitSizeMapCacheItem::setPrevKey" should "set next key to None" in {
     checkPrevKey(newMayBeNextKey=None,    oldMayBeNextKey=None)
     checkPrevKey(newMayBeNextKey=Some(1), oldMayBeNextKey=None)
     checkPrevKey(newMayBeNextKey=Some(1), oldMayBeNextKey=Some(2))
@@ -46,391 +46,391 @@ class CustomCacheItemSpec extends AnyFlatSpec {
 
 
 class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
-  "cleanOldRecords()" should "not clean old records in empty cache" in {
-    val limitSize = 100
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize)
-    val dstCache = srcCache.cleanOldRecords()
-    assert(srcCache == dstCache)
+  "cleanOldRecords()" should "not clean old items in empty LimitSizeMapCacheState" in {
+    val maxItemCount = 100
+    val itemCountAfterSizeCorrection = 70
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
+    val dstState = srcState.cleanOldItems()
+    assert(srcState == dstState)
   }
 
-  "cleanOldRecords()" should "not clean old records while cache size not more then limitSize" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+  "cleanOldRecords()" should "not clean old items while LimitSizeMapCacheState size not more then maxItemCount" in {
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
     val innerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, innerMap, Some(0), Some(4))
-    val dstCache = srcCache.cleanOldRecords()
-    assert(srcCache == dstCache)
+      0 -> LimitSizeMapCacheItem[Int, String](value="0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String](value="1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String](value="2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String](value="3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String](value="4", Some(3), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, innerMap, Some(0), Some(4))
+    val dstState = srcState.cleanOldItems()
+    assert(srcState == dstState)
   }
 
-  "cleanOldRecords()" should "clean old records" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+  "cleanOldRecords()" should "clean old items" in {
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), Some(5)),
-      5 -> CustomCacheItem[Int, String]("5", Some(4), Some(6)),
-      6 -> CustomCacheItem[Int, String]("6", Some(5), Some(7)),
-      7 -> CustomCacheItem[Int, String]("7", Some(6), Some(8)),
-      8 -> CustomCacheItem[Int, String]("8", Some(7), Some(9)),
-      9 -> CustomCacheItem[Int, String]("9", Some(8), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(9))
+      0 -> LimitSizeMapCacheItem[Int, String](value="0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String](value="1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String](value="2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String](value="3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String](value="4", Some(3), Some(5)),
+      5 -> LimitSizeMapCacheItem[Int, String](value="5", Some(4), Some(6)),
+      6 -> LimitSizeMapCacheItem[Int, String](value="6", Some(5), Some(7)),
+      7 -> LimitSizeMapCacheItem[Int, String](value="7", Some(6), Some(8)),
+      8 -> LimitSizeMapCacheItem[Int, String](value="8", Some(7), Some(9)),
+      9 -> LimitSizeMapCacheItem[Int, String](value="9", Some(8), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(9))
 
-    // size of requiredInnerMap is (limitSize * reducingFactor).toInt = (5 * 0.7).toInt = 3
     val requiredInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(0), Some(2))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(0), Some(2))
 
-    val dstCache = srcCache.cleanOldRecords()
+    val dstState = srcState.cleanOldItems()
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
-  "moveRecordOnTop()" should "not move top item on top (should stay cache without modifications)" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+  "moveRecordOnTop()" should "not move top item on top (should stay LimitSizeMapCacheState without modifications)" in {
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None,    Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None,    Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(4))
 
-    val dstCache = srcCache.moveRecordOnTop(0)
+    val dstState = srcState.moveRecordOnTop(0)
 
-    assert(dstCache == srcCache)
+    assert(dstState == srcState)
   }
 
   "moveRecordOnTop()" should "move before the top item on top" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
-      1 -> CustomCacheItem[Int, String]("1", None, Some(0)),
-      0 -> CustomCacheItem[Int, String]("0", Some(1), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(0), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(4))
+      1 -> LimitSizeMapCacheItem[Int, String]("1", None, Some(0)),
+      0 -> LimitSizeMapCacheItem[Int, String]("0", Some(1), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(0), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(4))
 
-    val dstCache = srcCache.moveRecordOnTop(1)
+    val dstState = srcState.moveRecordOnTop(1)
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
   "moveRecordOnTop()" should "move central item on top" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
-      2 -> CustomCacheItem[Int, String]("2", None, Some(0)),
-      0 -> CustomCacheItem[Int, String]("0", Some(2), Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(1), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(2), Some(4))
+      2 -> LimitSizeMapCacheItem[Int, String]("2", None, Some(0)),
+      0 -> LimitSizeMapCacheItem[Int, String]("0", Some(2), Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(1), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(2), Some(4))
 
-    val dstCache = srcCache.moveRecordOnTop(2)
+    val dstState = srcState.moveRecordOnTop(2)
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
   "moveRecordOnTop()" should "move before the bottom item on top" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
-      3 -> CustomCacheItem[Int, String]("3", None, Some(0)),
-      0 -> CustomCacheItem[Int, String]("0", Some(3), Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(2), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(3), Some(4))
+      3 -> LimitSizeMapCacheItem[Int, String]("3", None, Some(0)),
+      0 -> LimitSizeMapCacheItem[Int, String]("0", Some(3), Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(2), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(3), Some(4))
 
-    val dstCache = srcCache.moveRecordOnTop(3)
+    val dstState = srcState.moveRecordOnTop(3)
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
   "moveRecordOnTop()" should "move bottom item on top" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
-      4 -> CustomCacheItem[Int, String]("4", None, Some(0)),
-      0 -> CustomCacheItem[Int, String]("0", Some(4), Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(4), Some(3))
+      4 -> LimitSizeMapCacheItem[Int, String]("4", None, Some(0)),
+      0 -> LimitSizeMapCacheItem[Int, String]("0", Some(4), Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(4), Some(3))
 
-    val dstCache = srcCache.moveRecordOnTop(key=4)
+    val dstState = srcState.moveRecordOnTop(key=4)
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
   "moveRecordOnTop()" should "move bottom item on top in small cache" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(1))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(1))
 
     val requiredInnerMap = Map(
-      1 -> CustomCacheItem[Int, String]("1", None, Some(0)),
-      0 -> CustomCacheItem[Int, String]("0", Some(1), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(0))
+      1 -> LimitSizeMapCacheItem[Int, String]("1", None, Some(0)),
+      0 -> LimitSizeMapCacheItem[Int, String]("0", Some(1), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(0))
 
-    val dstCache = srcCache.moveRecordOnTop(key=1)
+    val dstState = srcState.moveRecordOnTop(key=1)
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
-  "setValueByKey()" should "modify single cache item value" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+  "setValueByKey()" should "modify single LimitSizeMapCacheState item value" in {
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
     val key1 = 0
     val key2 = key1 + 1
     val newValue = (key2 + 1).toString
 
     val srcInnerMap = Map(
-      key1 -> CustomCacheItem[Int, String](key1.toString, None, Some(key2)),
-      key2 -> CustomCacheItem[Int, String](key2.toString, Some(key1), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(key1), Some(1))
+      key1 -> LimitSizeMapCacheItem[Int, String](key1.toString, None, Some(key2)),
+      key2 -> LimitSizeMapCacheItem[Int, String](key2.toString, Some(key1), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(key1), Some(1))
 
     val requiredInnerMap = Map(
-      key1 -> CustomCacheItem[Int, String](newValue, None, Some(key2)),
-      key2 -> CustomCacheItem[Int, String](key2.toString, Some(key1), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(0), Some(1))
+      key1 -> LimitSizeMapCacheItem[Int, String](newValue, None, Some(key2)),
+      key2 -> LimitSizeMapCacheItem[Int, String](key2.toString, Some(key1), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(0), Some(1))
 
     val setValueByKeyMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("setValueByKey"))
-    val dstCache = srcCache invokePrivate setValueByKeyMethod(key1, newValue)
+    val dstState = srcState invokePrivate setValueByKeyMethod(key1, newValue)
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
   "updateOnTop()" should "just modify top item" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None,    Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None,    Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("00", None,    Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(0), Some(4))
+      0 -> LimitSizeMapCacheItem[Int, String]("00", None,    Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(0), Some(4))
 
-    val dstCache = srcCache.updateOnTop(0, "00")
+    val dstState = srcState.updateOnTop(0, "00")
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
   "updateOnTop()" should "modify and move before the top item on top" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
-      1 -> CustomCacheItem[Int, String]("11", None, Some(0)),
-      0 -> CustomCacheItem[Int, String]("0", Some(1), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(0), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(4))
+      1 -> LimitSizeMapCacheItem[Int, String]("11", None, Some(0)),
+      0 -> LimitSizeMapCacheItem[Int, String]("0", Some(1), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(0), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(4))
 
-    val dstCache = srcCache.updateOnTop(1, "11")
+    val dstState = srcState.updateOnTop(1, "11")
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
   "updateOnTop()" should "modify and move central item on top" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
-      2 -> CustomCacheItem[Int, String]("22", None, Some(0)),
-      0 -> CustomCacheItem[Int, String]("0", Some(2), Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(1), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(2), Some(4))
+      2 -> LimitSizeMapCacheItem[Int, String]("22", None, Some(0)),
+      0 -> LimitSizeMapCacheItem[Int, String]("0", Some(2), Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(1), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(2), Some(4))
 
-    val dstCache = srcCache.updateOnTop(2, "22")
+    val dstState = srcState.updateOnTop(2, "22")
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
   "updateOnTop()" should "modify and move before the bottom item on top" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
-      3 -> CustomCacheItem[Int, String]("33", None, Some(0)),
-      0 -> CustomCacheItem[Int, String]("0", Some(3), Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(2), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(3), Some(4))
+      3 -> LimitSizeMapCacheItem[Int, String]("33", None, Some(0)),
+      0 -> LimitSizeMapCacheItem[Int, String]("0", Some(3), Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(2), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(3), Some(4))
 
-    val dstCache = srcCache.updateOnTop(3, "33")
+    val dstState = srcState.updateOnTop(3, "33")
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
   "updateOnTop()" should "modify and move bottom item on top" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
-      4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), Some(4)),
+      4 -> LimitSizeMapCacheItem[Int, String]("4", Some(3), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
-      4 -> CustomCacheItem[Int, String]("44", None, Some(0)),
-      0 -> CustomCacheItem[Int, String]("0", Some(4), Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
-      2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
-      3 -> CustomCacheItem[Int, String]("3", Some(2), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(4), Some(3))
+      4 -> LimitSizeMapCacheItem[Int, String]("44", None, Some(0)),
+      0 -> LimitSizeMapCacheItem[Int, String]("0", Some(4), Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), Some(2)),
+      2 -> LimitSizeMapCacheItem[Int, String]("2", Some(1), Some(3)),
+      3 -> LimitSizeMapCacheItem[Int, String]("3", Some(2), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(4), Some(3))
 
-    val dstCache = srcCache.updateOnTop(key=4, "44")
+    val dstState = srcState.updateOnTop(key=4, "44")
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
   "updateOnTop()" should "modify and move bottom item on top in small cache" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(1))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(1))
 
     val requiredInnerMap = Map(
-      1 -> CustomCacheItem[Int, String]("11", None, Some(0)),
-      0 -> CustomCacheItem[Int, String]("0", Some(1), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(0))
+      1 -> LimitSizeMapCacheItem[Int, String]("11", None, Some(0)),
+      0 -> LimitSizeMapCacheItem[Int, String]("0", Some(1), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(0))
 
-    val dstCache = srcCache.updateOnTop(key=1, "11")
+    val dstState = srcState.updateOnTop(key=1, "11")
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 
   "updateOnTop()" should "add new pair of key->value on top" in {
-    val limitSize = 5
-    val reducingFactor = 0.7
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection = 3
 
     val srcInnerMap = Map(
-      0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), None))
-    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(1))
+      0 -> LimitSizeMapCacheItem[Int, String]("0", None, Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), None))
+    val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, srcInnerMap, Some(0), Some(1))
 
     val requiredInnerMap = Map(
-      2 -> CustomCacheItem[Int, String]("2", None, Some(0)),
-      0 -> CustomCacheItem[Int, String]("0", Some(2), Some(1)),
-      1 -> CustomCacheItem[Int, String]("1", Some(0), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(2), Some(1))
+      2 -> LimitSizeMapCacheItem[Int, String]("2", None, Some(0)),
+      0 -> LimitSizeMapCacheItem[Int, String]("0", Some(2), Some(1)),
+      1 -> LimitSizeMapCacheItem[Int, String]("1", Some(0), None))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(2), Some(1))
 
-    val dstCache = srcCache.updateOnTop(key=2, "2")
+    val dstState = srcState.updateOnTop(key=2, "2")
 
-    assert(dstCache != srcCache)
-    assert(dstCache == requiredDstCache)
+    assert(dstState != srcState)
+    assert(dstState == requiredDstCache)
   }
 }
 
@@ -438,16 +438,17 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
 class CustomCacheSpec extends AnyFlatSpec {
   "Initialized cache" should "be empty" in {
     def test[F[_] : Sync](): F[Unit] = {
-      val sizeLimit = 5
-      val reducingFactor = 0.7
+      val maxItemCount = 5
+      val itemCountAfterSizeCorrection = 3
+      val beginState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
       for {
-        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](LimitSizeMapCacheState[Int, String](sizeLimit, reducingFactor))
+        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](beginState)
         cache = LimitSizeMapCache(ref)
 
         item <- cache.get(0)
         _ = assert(item.isEmpty)
         state <- cache.state.get
-        records = state.records
+        records = state.items
         _ = assert(records.isEmpty)
         _ = assert(state.mayBeTopKey.isEmpty)
         _ = assert(state.mayBeBottomKey.isEmpty)
@@ -459,10 +460,11 @@ class CustomCacheSpec extends AnyFlatSpec {
 
   "Cache after 1 call of set()" should "be have 1 item" in {
     def test[F[_] : Sync](): F[Unit] = {
-      val sizeLimit = 5
-      val reducingFactor = 0.7
+      val maxItemCount = 5
+      val itemCountAfterSizeCorrection = 3
+      val beginState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
       for {
-        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](LimitSizeMapCacheState[Int, String](sizeLimit, reducingFactor))
+        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](beginState)
         cache = LimitSizeMapCache(ref)
         _ <- cache.set(0, "0")
 
@@ -471,7 +473,7 @@ class CustomCacheSpec extends AnyFlatSpec {
         item1 <- cache.get(1)
         _ = assert(item1.isEmpty)
         state <- cache.state.get
-        records = state.records
+        records = state.items
         _ = assert(records.size == 1)
         _ = assert(records.contains(0))
         _ = assert(records(0).value == "0")
@@ -486,10 +488,11 @@ class CustomCacheSpec extends AnyFlatSpec {
 
   "Cache after 2 call of set()" should "be have 2 item" in {
     def test[F[_] : Sync](): F[Unit] = {
-      val sizeLimit = 5
-      val reducingFactor = 0.7
+      val maxItemCount = 5
+      val itemCountAfterSizeCorrection = 3
+      val beginState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
       for {
-        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](LimitSizeMapCacheState[Int, String](sizeLimit, reducingFactor))
+        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](beginState)
         cache = LimitSizeMapCache(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
@@ -501,7 +504,7 @@ class CustomCacheSpec extends AnyFlatSpec {
         item2 <- cache.get(2)
         _ = assert(item2.isEmpty)
         state <- cache.state.get
-        records = state.records
+        records = state.items
         _ = assert(records.size == 2)
         _ = assert(records.contains(0) && records.contains(1))
         _ = assert(records(0).value == "0" && records(1).value == "1")
@@ -517,10 +520,11 @@ class CustomCacheSpec extends AnyFlatSpec {
 
   "Reading exists item from Cache" should "modify items order if item is not on top" in {
     def test[F[_] : Sync](): F[Unit] = {
-      val sizeLimit = 5
-      val reducingFactor = 0.7
+      val maxItemCount = 5
+      val itemCountAfterSizeCorrection = 3
+      val beginState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
       for {
-        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](LimitSizeMapCacheState[Int, String](sizeLimit, reducingFactor))
+        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](beginState)
         cache = LimitSizeMapCache(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
@@ -530,10 +534,10 @@ class CustomCacheSpec extends AnyFlatSpec {
 
         _ = assert(srcCache.mayBeTopKey.contains(1) && srcCache.mayBeBottomKey.contains(0))
         _ = assert(dstCache.mayBeTopKey.contains(0) && dstCache.mayBeBottomKey.contains(1))
-        _ = assert(srcCache.records(1).mayBeNextKey.isEmpty && srcCache.records(1).mayBePrevKey.isDefined)
-        _ = assert(dstCache.records(0).mayBeNextKey.isEmpty && dstCache.records(0).mayBePrevKey.isDefined)
-        _ = assert(dstCache.records(0).value == srcCache.records(0).value)
-        _ = assert(dstCache.records(1).value == srcCache.records(1).value)
+        _ = assert(srcCache.items(1).mayBeNextKey.isEmpty && srcCache.items(1).mayBePrevKey.isDefined)
+        _ = assert(dstCache.items(0).mayBeNextKey.isEmpty && dstCache.items(0).mayBePrevKey.isDefined)
+        _ = assert(dstCache.items(0).value == srcCache.items(0).value)
+        _ = assert(dstCache.items(1).value == srcCache.items(1).value)
       } yield ()
     }
 
@@ -542,10 +546,11 @@ class CustomCacheSpec extends AnyFlatSpec {
 
   "Cache" should "store all added data if size not more then limitSize" in {
     def test[F[_] : Sync](): F[Unit] = {
-      val sizeLimit = 5
-      val reducingFactor = 0.7
+      val maxItemCount = 5
+      val itemCountAfterSizeCorrection = 3
+      val beginState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
       for {
-        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](LimitSizeMapCacheState[Int, String](sizeLimit, reducingFactor))
+        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](beginState)
         cache = LimitSizeMapCache(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
@@ -554,7 +559,7 @@ class CustomCacheSpec extends AnyFlatSpec {
         _ <- cache.set(4, "4")
 
         state <- cache.state.get
-        records = state.records
+        records = state.items
         _ = assert(records.contains(0) && records.contains(1) && records.contains(2) && records.contains(3) && records.contains(4))
         _ = assert(records(0).value == "0" && records(1).value == "1" && records(2).value == "2" && records(3).value == "3" && records(4).value == "4")
         _ = assert(state.mayBeTopKey.contains(4))
@@ -567,10 +572,11 @@ class CustomCacheSpec extends AnyFlatSpec {
 
   "Cache" should "decrease inner map size if this size more then limitSize" in {
     def test[F[_] : Sync](): F[Unit] = {
-      val sizeLimit = 5
-      val reducingFactor = 0.7
+      val maxItemCount = 5
+      val itemCountAfterSizeCorrection = 3
+      val beginState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
       for {
-        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](LimitSizeMapCacheState[Int, String](sizeLimit, reducingFactor))
+        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](beginState)
         cache = LimitSizeMapCache(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
@@ -580,7 +586,7 @@ class CustomCacheSpec extends AnyFlatSpec {
         _ <- cache.set(5, "5")
 
         state <- cache.state.get
-        records = state.records
+        records = state.items
         _ = assert(!records.contains(0) && !records.contains(1) && !records.contains(2))
         _ = assert(records.contains(3) && records.contains(4) && records.contains(5))
         _ = assert(records(3).value == "3" && records(4).value == "4" && records(5).value == "5")

@@ -41,10 +41,11 @@ object CacheExperiments {
     override def set(key: Array[Byte], value: Int): F[Unit] = (cache(key) = value).pure
   }
 
-  class CustomTestCache[F[_]: Sync](val size: Int) extends AbstractTestCache[F] {
+  class LimitSizeTestCache[F[_]: Sync](val maxItemCount: Int, val itemCountAfterSizeCorrection: Int) extends AbstractTestCache[F] {
+    private val beginState = LimitSizeMapCacheState[Array[Byte], Int](maxItemCount, itemCountAfterSizeCorrection)
     override val name: String = "CustomCache"
     private val cacheRef = for {
-      ref <- Ref.of[F, LimitSizeMapCacheState[Array[Byte], Int]](LimitSizeMapCacheState[Array[Byte], Int](size))
+      ref <- Ref.of[F, LimitSizeMapCacheState[Array[Byte], Int]](beginState)
       cache = LimitSizeMapCache(ref)
     } yield(cache)
 
@@ -53,10 +54,12 @@ object CacheExperiments {
     override def set(key: Array[Byte], value: Int): F[Unit] = for {cache <- cacheRef; _ <- cache.set(key, value)} yield()
   }
 
-  class UnlimitedCustomTestCache[F[_]: Sync](val size: Int) extends AbstractTestCache[F] {
+  class UnlimitedCustomTestCache[F[_]: Sync](val maxItemCount: Int) extends AbstractTestCache[F] {
+    private val size = maxItemCount * maxItemCount
+    private val beginState = LimitSizeMapCacheState[Array[Byte], Int](size, size)
     override val name: String = "UnlimitedCustomCache"
     private val cacheRef = for {
-      ref <- Ref.of[F, LimitSizeMapCacheState[Array[Byte], Int]](LimitSizeMapCacheState[Array[Byte], Int](size * size))
+      ref <- Ref.of[F, LimitSizeMapCacheState[Array[Byte], Int]](beginState)
       cache = LimitSizeMapCache(ref)
     } yield(cache)
 
@@ -141,11 +144,11 @@ object CacheExperiments {
     List.fill(copyCount)(uniqueEvents).flatten
   }
 
-  def prepareCaches[F[_]: Sync](limitTriaMapSize: Int = 100): F[List[AbstractTestCache[F]]] = {
+  def prepareCaches[F[_]: Sync](maxItemCount: Int, itemCountAfterSizeCorrection: Int): F[List[AbstractTestCache[F]]] = {
     //val triaMap1 = new RegularTrieMapTestCache
     //val triaMap2 = new ImperativeTestCache(limitTriaMapSize)
-    val triaMap3 = new CustomTestCache[F](limitTriaMapSize)
-    val triaMap4 = new UnlimitedCustomTestCache[F](limitTriaMapSize)
+    val triaMap3 = new LimitSizeTestCache[F](maxItemCount, itemCountAfterSizeCorrection)
+    val triaMap4 = new UnlimitedCustomTestCache[F](maxItemCount)
 
     List(/*triaMap1, triaMap2,*/ triaMap3, triaMap4).pure
   }
@@ -166,55 +169,58 @@ object CacheExperiments {
     s"""limitTriaMapSize: $limitTriaMapSize; multiThreadMode: $multiThreadMode"""
   }
 
-  def testReadManyOldItemsOnly[F[_]: Sync](limitTriaMapSize: Int, multiThreadMode: Boolean,
+  def testReadManyOldItemsOnly[F[_]: Sync](maxItemCount: Int, itemCountAfterSizeCorrection: Int,
+                                           multiThreadMode: Boolean,
                                            experimentCount: Int, notImportantExperimentsCount: Int,
                                            resultFileDir: String, fileName: String): F[Unit] = {
     println("testReadManyOldItemsOnly")
     val scale = 1000
-    val ItemsCount = limitTriaMapSize * scale
+    val ItemsCount = maxItemCount * scale
     for {
-      caches <- prepareCaches[F](limitTriaMapSize)
+      caches <- prepareCaches[F](maxItemCount, itemCountAfterSizeCorrection)
       queue = prepareGetEvents(ItemsCount)
 
       // setup cache data
       _ = calculateCachesWorkTime[F](caches, prepareSetEvents(ItemsCount))
       periods = repeat(multiThreadMode, experimentCount, _ => {calculateCachesWorkTime[F](caches, queue)})
       userPeriods = periods.slice(notImportantExperimentsCount, experimentCount)
-      description = getDescription(limitTriaMapSize, multiThreadMode)
+      description = getDescription(maxItemCount, multiThreadMode)
       _ = writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, userPeriods, description)
       //_ = writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, userPeriods, description)
     } yield()
   }
 
-  def testReadOldItemsOnly[F[_]: Sync](limitTriaMapSize: Int, multiThreadMode: Boolean,
+  def testReadOldItemsOnly[F[_]: Sync](maxItemCount: Int, itemCountAfterSizeCorrection: Int,
+                                       multiThreadMode: Boolean,
                                        experimentCount: Int, notImportantExperimentsCount: Int,
                                        resultFileDir: String, fileName: String): F[Unit] = {
     println("testReadOldItemsOnly")
     val scale = 1
-    val ItemsCount = limitTriaMapSize * scale
+    val ItemsCount = maxItemCount * scale
     for {
-      caches <- prepareCaches[F](limitTriaMapSize)
-      queue = prepareGetEvents(limitTriaMapSize)
+      caches <- prepareCaches[F](maxItemCount, itemCountAfterSizeCorrection)
+      queue = prepareGetEvents(maxItemCount)
 
       // setup cache data
       _ = calculateCachesWorkTime[F](caches, prepareSetEvents(ItemsCount))
       periods = repeat(multiThreadMode, experimentCount, (_:Unit) => calculateCachesWorkTime[F](caches, queue))
       userPeriods = periods.slice(notImportantExperimentsCount, experimentCount)
-      description = getDescription(limitTriaMapSize, multiThreadMode)
+      description = getDescription(maxItemCount, multiThreadMode)
       _ = writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, userPeriods, description)
       //_ = writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, userPeriods, description)
     } yield()
   }
 
-  def testAddNewItemsOnly[F[_]: Sync](limitTriaMapSize: Int, multiThreadMode: Boolean,
+  def testAddNewItemsOnly[F[_]: Sync](maxItemCount: Int, itemCountAfterSizeCorrection: Int,
+                                      multiThreadMode: Boolean,
                                       experimentCount: Int, notImportantExperimentsCount: Int,
                                       resultFileDir: String, fileName: String): F[Unit] = {
     println("testAddNewItemsOnly")
     for {
-      caches <- prepareCaches[F](limitTriaMapSize)
-      periods = repeat(multiThreadMode, experimentCount, (_:Unit) => {calculateCachesWorkTime[F](caches, prepareSetEvents(limitTriaMapSize))})
+      caches <- prepareCaches[F](maxItemCount, itemCountAfterSizeCorrection)
+      periods = repeat(multiThreadMode, experimentCount, (_:Unit) => {calculateCachesWorkTime[F](caches, prepareSetEvents(maxItemCount))})
       userPeriods = periods.slice(notImportantExperimentsCount, experimentCount)
-      description = getDescription(limitTriaMapSize, multiThreadMode)
+      description = getDescription(maxItemCount, multiThreadMode)
       _ = writeLineChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, userPeriods, description)
       //_ = writeBarChartFile(resultFileDir, addThreadModeToFilename(fileName, multiThreadMode), caches, userPeriods, description)
     } yield()
@@ -222,18 +228,19 @@ object CacheExperiments {
 
 
   def main(args: Array[String]): Unit = {
-    val limitTriaMapSize = 1000
+    val maxItemCount = 1000
+    val itemCountAfterSizeCorrection = 700
     val multiThreadMode = false
     val experimentCount = 500
     val notImportantExperimentsCount = 100
     val resultDir = "./resultHTML"
 
     println("This program compare performance of LimitSizeCache's implementations and represent results in HTML-files.")
-    testReadManyOldItemsOnly[Task](limitTriaMapSize,
+    testReadManyOldItemsOnly[Task](maxItemCount, itemCountAfterSizeCorrection,
       multiThreadMode, experimentCount, notImportantExperimentsCount, resultDir, "readManyOld").runSyncUnsafe()
-    testReadOldItemsOnly[Task](limitTriaMapSize,
+    testReadOldItemsOnly[Task](maxItemCount, itemCountAfterSizeCorrection,
       multiThreadMode, experimentCount, notImportantExperimentsCount, resultDir, "readOld").runSyncUnsafe()
-    testAddNewItemsOnly[Task](limitTriaMapSize,
+    testAddNewItemsOnly[Task](maxItemCount, itemCountAfterSizeCorrection,
       multiThreadMode, experimentCount, notImportantExperimentsCount, resultDir, "writeNew").runSyncUnsafe()
     println(s"""HTML-files with Google Visualization graphics are saved in this path: <$resultDir>.""")
   }
