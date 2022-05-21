@@ -46,7 +46,11 @@ case class LimitSizeMapCacheState[K, V](val maxItemCount: Int, val itemCountAfte
   }
   implicit def mapToMap(state: Map[K, LimitSizeMapStateItem[K, V]]): ExtendedMap = new ExtendedMap(state)
 
-  def updateOnTop(key: K, value: V): LimitSizeMapCacheState[K, V] = {
+  def update(key: K, value: V): LimitSizeMapCacheState[K, V] = {
+    updateOnTop(key, value).cleanOldItems()
+  }
+
+  private def updateOnTop(key: K, value: V): LimitSizeMapCacheState[K, V] = {
     if (!items.contains(key)) addValueByKeyOnTop(key, value)
     else setValueByKey(key, value).moveRecordOnTop(key)
   }
@@ -105,7 +109,7 @@ case class LimitSizeMapCacheState[K, V](val maxItemCount: Int, val itemCountAfte
     else this.copy()
   }
 
-  def cleanOldItems(): LimitSizeMapCacheState[K, V] = {
+  private def cleanOldItems(): LimitSizeMapCacheState[K, V] = {
     if (this.maxItemCount < this.items.size) this.removeLastRecords(this.items.size - (0.7 * this.maxItemCount).toInt)
     else this.copy()
   }
@@ -115,11 +119,11 @@ case class LimitSizeMapCacheState[K, V](val maxItemCount: Int, val itemCountAfte
 /**
  * [[LimitSizeMapCache]] - multi thread version of [[LimitSizeMapCacheState]]
  *
- * @param state - instance of [[LimitSizeMapCacheState]] covered in cats.Ref for multi thread safety
+ * @param stateRef - instance of [[LimitSizeMapCacheState]] covered in cats.Ref for multi thread safety
  */
-case class LimitSizeMapCache[F[_]: Sync, K, V](val state: Ref[F, LimitSizeMapCacheState[K, V]]) {
+case class LimitSizeMapCache[F[_]: Sync, K, V](val stateRef: Ref[F, LimitSizeMapCacheState[K, V]]) {
   def get(key: K): F[Option[V]] = {
-    state.modify(state => {
+    stateRef.modify(state => {
       val mayBeValue = state.items.get(key)
       mayBeValue match {
         case None => (state, None)
@@ -128,5 +132,5 @@ case class LimitSizeMapCache[F[_]: Sync, K, V](val state: Ref[F, LimitSizeMapCac
     })
   }
 
-  def set(key: K, value: V): F[Unit] = state.update(state => {state.updateOnTop(key, value).cleanOldItems()})
+  def set(key: K, value: V): F[Unit] = stateRef.update(state => {state.update(key, value)})
 }

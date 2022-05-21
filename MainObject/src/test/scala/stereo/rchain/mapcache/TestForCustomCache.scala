@@ -46,11 +46,16 @@ class CustomCacheItemSpec extends AnyFlatSpec {
 
 
 class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
+  val cleanOldItemsMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("cleanOldItems"))
+  val updateOnTopMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("updateOnTop"))
+  val setValueByKeyMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("setValueByKey"))
+
   "cleanOldRecords()" should "not clean old items in empty LimitSizeMapCacheState" in {
     val maxItemCount = 100
     val itemCountAfterSizeCorrection = 70
     val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection)
-    val dstState = srcState.cleanOldItems()
+    val dstState = srcState invokePrivate cleanOldItemsMethod()
+
     assert(srcState == dstState)
   }
 
@@ -64,7 +69,8 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       3 -> LimitSizeMapStateItem[Int, String](value="3", Some(2), Some(4)),
       4 -> LimitSizeMapStateItem[Int, String](value="4", Some(3), None))
     val srcState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, innerMap, Some(0), Some(4))
-    val dstState = srcState.cleanOldItems()
+    val dstState = srcState invokePrivate cleanOldItemsMethod()
+
     assert(srcState == dstState)
   }
 
@@ -91,7 +97,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> LimitSizeMapStateItem[Int, String]("2", Some(1), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(0), Some(2))
 
-    val dstState = srcState.cleanOldItems()
+    val dstState = srcState invokePrivate cleanOldItemsMethod()
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -255,7 +261,6 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       key2 -> LimitSizeMapStateItem[Int, String](key2.toString, Some(key1), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(0), Some(1))
 
-    val setValueByKeyMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("setValueByKey"))
     val dstState = srcState invokePrivate setValueByKeyMethod(key1, newValue)
 
     assert(dstState != srcState)
@@ -282,7 +287,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       4 -> LimitSizeMapStateItem[Int, String]("4", Some(3), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(0), Some(4))
 
-    val dstState = srcState.updateOnTop(0, "00")
+    val dstState = srcState invokePrivate  updateOnTopMethod(0, "00")
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -308,7 +313,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       4 -> LimitSizeMapStateItem[Int, String]("4", Some(3), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(4))
 
-    val dstState = srcState.updateOnTop(1, "11")
+    val dstState = srcState invokePrivate  updateOnTopMethod(1, "11")
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -334,7 +339,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       4 -> LimitSizeMapStateItem[Int, String]("4", Some(3), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(2), Some(4))
 
-    val dstState = srcState.updateOnTop(2, "22")
+    val dstState = srcState invokePrivate  updateOnTopMethod(2, "22")
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -360,7 +365,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       4 -> LimitSizeMapStateItem[Int, String]("4", Some(2), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(3), Some(4))
 
-    val dstState = srcState.updateOnTop(3, "33")
+    val dstState = srcState invokePrivate  updateOnTopMethod(3, "33")
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -386,7 +391,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       3 -> LimitSizeMapStateItem[Int, String]("3", Some(2), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(4), Some(3))
 
-    val dstState = srcState.updateOnTop(key=4, "44")
+    val dstState = srcState invokePrivate  updateOnTopMethod(4, "44")
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -406,7 +411,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       0 -> LimitSizeMapStateItem[Int, String]("0", Some(1), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(0))
 
-    val dstState = srcState.updateOnTop(key=1, "11")
+    val dstState = srcState invokePrivate  updateOnTopMethod(1, "11")
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -427,7 +432,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> LimitSizeMapStateItem[Int, String]("1", Some(0), None))
     val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(2), Some(1))
 
-    val dstState = srcState.updateOnTop(key=2, "2")
+    val dstState = srcState invokePrivate  updateOnTopMethod(2, "2")
 
     assert(dstState != srcState)
     assert(dstState == requiredDstCache)
@@ -447,7 +452,7 @@ class CustomCacheSpec extends AnyFlatSpec {
 
         item <- cache.get(0)
         _ = assert(item.isEmpty)
-        state <- cache.state.get
+        state <- cache.stateRef.get
         records = state.items
         _ = assert(records.isEmpty)
         _ = assert(state.mayBeTopKey.isEmpty)
@@ -472,7 +477,7 @@ class CustomCacheSpec extends AnyFlatSpec {
         _ = assert(item0.isDefined && item0.get == "0")
         item1 <- cache.get(1)
         _ = assert(item1.isEmpty)
-        state <- cache.state.get
+        state <- cache.stateRef.get
         records = state.items
         _ = assert(records.size == 1)
         _ = assert(records.contains(0))
@@ -503,7 +508,7 @@ class CustomCacheSpec extends AnyFlatSpec {
         _ = assert(item1.isDefined && item1.get == "1")
         item2 <- cache.get(2)
         _ = assert(item2.isEmpty)
-        state <- cache.state.get
+        state <- cache.stateRef.get
         records = state.items
         _ = assert(records.size == 2)
         _ = assert(records.contains(0) && records.contains(1))
@@ -528,9 +533,9 @@ class CustomCacheSpec extends AnyFlatSpec {
         cache = LimitSizeMapCache(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
-        srcCache <- cache.state.get
+        srcCache <- cache.stateRef.get
         _ <- cache.get(0)
-        dstCache <- cache.state.get
+        dstCache <- cache.stateRef.get
 
         _ = assert(srcCache.mayBeTopKey.contains(1) && srcCache.mayBeBottomKey.contains(0))
         _ = assert(dstCache.mayBeTopKey.contains(0) && dstCache.mayBeBottomKey.contains(1))
@@ -558,7 +563,7 @@ class CustomCacheSpec extends AnyFlatSpec {
         _ <- cache.set(3, "3")
         _ <- cache.set(4, "4")
 
-        state <- cache.state.get
+        state <- cache.stateRef.get
         records = state.items
         _ = assert(records.contains(0) && records.contains(1) && records.contains(2) && records.contains(3) && records.contains(4))
         _ = assert(records(0).value == "0" && records(1).value == "1" && records(2).value == "2" && records(3).value == "3" && records(4).value == "4")
@@ -585,7 +590,7 @@ class CustomCacheSpec extends AnyFlatSpec {
         _ <- cache.set(4, "4")
         _ <- cache.set(5, "5")
 
-        state <- cache.state.get
+        state <- cache.stateRef.get
         records = state.items
         _ = assert(!records.contains(0) && !records.contains(1) && !records.contains(2))
         _ = assert(records.contains(3) && records.contains(4) && records.contains(5))
