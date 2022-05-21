@@ -52,4 +52,5 @@ for {
 * Unittests for `LimitSizeMapCache` is [here](https://github.com/SivkovAV/mapCache/blob/master/LimitSizeMapCache/src/test/scala/stereo/rchain/mapcache/TestForCustomCache.scala)
 
 * other source code files from [here](https://github.com/SivkovAV/mapCache) a program that generates html files
-with performance comparison graphs; these graphs allow us to compare `LimitSizeMapCache` with other storages in various tasks.
+with performance comparison graphs; these graphs allow us to compare `LimitSizeMapCache` with other storages in various tasks;
+internet connection required to view these graphs
