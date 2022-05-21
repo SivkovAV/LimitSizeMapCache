@@ -226,7 +226,7 @@ class LimitSizeMapCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
     assert(dstState == requiredDstState)
   }
 
-  "moveItemOnTop()" should "move bottom item on top in small cache" in {
+  "moveItemOnTop()" should "move bottom item on top in small state" in {
     val maxItemCount = 5
     val itemCountAfterSizeCorrection = 3
 
@@ -399,7 +399,7 @@ class LimitSizeMapCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
     assert(dstState == requiredDstState)
   }
 
-  "updateOnTop()" should "modify and move bottom item on top in small cache" in {
+  "updateOnTop()" should "modify and move bottom item on top in small state" in {
     val maxItemCount = 5
     val itemCountAfterSizeCorrection = 3
 
@@ -525,7 +525,7 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
     test[Task]().runSyncUnsafe()
   }
 
-  "Reading exists item from Cache" should "modify items order if item is not on top" in {
+  "Reading exists item from cache" should "modify items order if item is not on top" in {
     def test[F[_] : Sync](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
@@ -551,7 +551,7 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
     test[Task]().runSyncUnsafe()
   }
 
-  "Cache" should "store all added data if size not more then limitSize" in {
+  "Cache" should "store all added data if size not more then maxItemCount" in {
     def test[F[_] : Sync](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
@@ -577,7 +577,7 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
     test[Task]().runSyncUnsafe()
   }
 
-  "Cache" should "decrease inner map size if this size more then limitSize" in {
+  "Cache" should "decrease inner map size if this size more then maxItemCount" in {
     def test[F[_] : Sync](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
