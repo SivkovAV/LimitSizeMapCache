@@ -5,20 +5,20 @@ import cats.effect.concurrent.Ref
 
 
 /**
- * [[LimitSizeMapStateItem]] is minimal data item for [[LimitSizeMapCacheState]]. It's immutable structure.
+ * [[LimitSizeMapItemValue]] is minimal data item for [[LimitSizeMapCacheState]]. It's immutable structure.
  * It stores "user value" and system data about item's position inside [[LimitSizeMapCacheState]].
  *
  * @param value        - user value
- * @param mayBeNextKey - key for higher [[LimitSizeMapStateItem]] or None if item is top inside [[LimitSizeMapCacheState]]
- * @param mayBePrevKey - key for lower [[LimitSizeMapStateItem]] or None if item is bottom inside [[LimitSizeMapCacheState]]
+ * @param mayBeNextKey - key for higher [[LimitSizeMapItemValue]] or None if item is top inside [[LimitSizeMapCacheState]]
+ * @param mayBePrevKey - key for lower [[LimitSizeMapItemValue]] or None if item is bottom inside [[LimitSizeMapCacheState]]
  */
-case class LimitSizeMapStateItem[K, V](value: V, mayBeNextKey: Option[K] = None, mayBePrevKey: Option[K] = None) {
-  def setNextKey(mayBeKey: Option[K]): LimitSizeMapStateItem[K, V] = {
-    LimitSizeMapStateItem(value, mayBeKey, mayBePrevKey)
+case class LimitSizeMapItemValue[K, V](value: V, mayBeNextKey: Option[K] = None, mayBePrevKey: Option[K] = None) {
+  def setNextKey(mayBeKey: Option[K]): LimitSizeMapItemValue[K, V] = {
+    LimitSizeMapItemValue(value, mayBeKey, mayBePrevKey)
   }
 
-  def setPrevKey(mayBeKey: Option[K]): LimitSizeMapStateItem[K, V] = {
-    LimitSizeMapStateItem(value, mayBeNextKey, mayBeKey)
+  def setPrevKey(mayBeKey: Option[K]): LimitSizeMapItemValue[K, V] = {
+    LimitSizeMapItemValue(value, mayBeNextKey, mayBeKey)
   }
 }
 
@@ -37,20 +37,20 @@ case class LimitSizeMapStateItem[K, V](value: V, mayBeNextKey: Option[K] = None,
  * @param mayBeBottomKey - bottom element key or None if storage is empty
  */
 case class LimitSizeMapCacheState[K, V](val maxItemCount: Int, val itemCountAfterSizeCorrection: Int,
-                                        val items: Map[K, LimitSizeMapStateItem[K, V]] = Map.empty[K, LimitSizeMapStateItem[K, V]],
+                                        val items: Map[K, LimitSizeMapItemValue[K, V]] = Map.empty[K, LimitSizeMapItemValue[K, V]],
                                         val mayBeTopKey: Option[K] = None,
                                         val mayBeBottomKey: Option[K] = None) {
-  class ExtendedMap(state: Map[K, LimitSizeMapStateItem[K, V]]) {
-    def update(mayBeItem: Option[(K, LimitSizeMapStateItem[K, V])]): Map[K, LimitSizeMapStateItem[K, V]] =
+  class ExtendedMap(state: Map[K, LimitSizeMapItemValue[K, V]]) {
+    def update(mayBeItem: Option[(K, LimitSizeMapItemValue[K, V])]): Map[K, LimitSizeMapItemValue[K, V]] =
       mayBeItem.map(item => state + item).getOrElse(state)
   }
-  implicit def mapToMap(state: Map[K, LimitSizeMapStateItem[K, V]]): ExtendedMap = new ExtendedMap(state)
+  implicit def mapToMap(state: Map[K, LimitSizeMapItemValue[K, V]]): ExtendedMap = new ExtendedMap(state)
 
   def modify(key: K): (LimitSizeMapCacheState[K, V], Option[V]) = {
     val mayBeValue = items.get(key)
     mayBeValue match {
       case None => (this, None)
-      case _ => (moveRecordOnTop(key), Some(mayBeValue.get.value))
+      case _ => (moveItemOnTop(key), Some(mayBeValue.get.value))
     }
   }
 
@@ -60,65 +60,67 @@ case class LimitSizeMapCacheState[K, V](val maxItemCount: Int, val itemCountAfte
 
   private def updateOnTop(key: K, value: V): LimitSizeMapCacheState[K, V] = {
     if (!items.contains(key)) addValueByKeyOnTop(key, value)
-    else setValueByKey(key, value).moveRecordOnTop(key)
+    else setValueByKey(key, value).moveItemOnTop(key)
   }
 
   private def addValueByKeyOnTop(key: K, value: V): LimitSizeMapCacheState[K, V] = {
-    val currentRecord = key -> LimitSizeMapStateItem(value, None, mayBeTopKey)
-    val mayBeTopRecord = for {topKey <- mayBeTopKey; item = topKey -> items(topKey).setNextKey(Some(key))} yield(item)
-    val newRecords = (items + currentRecord).update(mayBeTopRecord)
+    val currentItem = key -> LimitSizeMapItemValue(value, None, mayBeTopKey)
+    val mayBeTopItem = for {topKey <- mayBeTopKey; item = topKey -> items(topKey).setNextKey(Some(key))} yield(item)
+    val newItems = (items + currentItem).update(mayBeTopItem)
     val newMayBeTopKey = Some(key)
     val newMayBeBottomKey = Some(mayBeBottomKey.getOrElse(key))
-    LimitSizeMapCacheState(maxItemCount, itemCountAfterSizeCorrection, newRecords, newMayBeTopKey, newMayBeBottomKey)
+    LimitSizeMapCacheState(maxItemCount, itemCountAfterSizeCorrection, newItems, newMayBeTopKey, newMayBeBottomKey)
   }
 
   private def setValueByKey(key: K, value: V): LimitSizeMapCacheState[K, V] = {
-    val record = items(key)
-    val item = key -> LimitSizeMapStateItem(value, record.mayBeNextKey, record.mayBePrevKey)
-    val newRecords = items + item
-    LimitSizeMapCacheState(maxItemCount, itemCountAfterSizeCorrection, newRecords, mayBeTopKey, mayBeBottomKey)
+    val itemValue = items(key)
+    val item = key -> LimitSizeMapItemValue(value, itemValue.mayBeNextKey, itemValue.mayBePrevKey)
+    val newItems = items + item
+    LimitSizeMapCacheState(maxItemCount, itemCountAfterSizeCorrection, newItems, mayBeTopKey, mayBeBottomKey)
   }
 
-  private def moveRecordOnTop(key: K): LimitSizeMapCacheState[K, V] = {
+  private def moveItemOnTop(key: K): LimitSizeMapCacheState[K, V] = {
     if (mayBeTopKey.isDefined && mayBeTopKey.get==key)
       this
     else {
       val mapValue = items(key)
-      val currentRecord = key -> LimitSizeMapStateItem(mapValue.value, None, mayBeTopKey)
-      val topRecord = mayBeTopKey.get -> items(mayBeTopKey.get).setNextKey(Some(key))
-      val newRecords = items + currentRecord + topRecord
+      val currentItem = key -> LimitSizeMapItemValue(mapValue.value, None, mayBeTopKey)
+      val topItem = mayBeTopKey.get -> items(mayBeTopKey.get).setNextKey(Some(key))
+      val newItems = items + currentItem + topItem
 
-      val mayBeNextRecord = for {nk <- mapValue.mayBeNextKey; pk = mapValue.mayBePrevKey; r = nk -> newRecords(nk).setPrevKey(pk)} yield (r)
-      val mayBePrevRecord = for {pk <- mapValue.mayBePrevKey; nk = mapValue.mayBeNextKey; r = pk -> newRecords(pk).setNextKey(nk)} yield (r)
+      val mayBeNextItem = for {nk <- mapValue.mayBeNextKey; pk = mapValue.mayBePrevKey; r = nk -> newItems(nk).setPrevKey(pk)} yield (r)
+      val mayBePrevItem = for {pk <- mapValue.mayBePrevKey; nk = mapValue.mayBeNextKey; r = pk -> newItems(pk).setNextKey(nk)} yield (r)
 
       val newMayBeBottomKey = mayBeBottomKey match {
         case mayBeBottomKey if mayBeBottomKey.get == key && items(key).mayBeNextKey.isDefined => items(key).mayBeNextKey
         case _ => mayBeBottomKey
       }
-      val finalRecords = newRecords.update(mayBeNextRecord).update(mayBePrevRecord)
+      val finalItems = newItems.update(mayBeNextItem).update(mayBePrevItem)
 
-      LimitSizeMapCacheState(maxItemCount, itemCountAfterSizeCorrection, finalRecords, Some(key), newMayBeBottomKey)
+      LimitSizeMapCacheState(maxItemCount, itemCountAfterSizeCorrection, finalItems, Some(key), newMayBeBottomKey)
     }
   }
 
-  private def removeLastRecord(): LimitSizeMapCacheState[K, V] = {
+  private def removeOldItem(): LimitSizeMapCacheState[K, V] = {
     val key = mayBeBottomKey.get
     LimitSizeMapCacheState(maxItemCount, itemCountAfterSizeCorrection, items - key, mayBeTopKey, items(key).mayBeNextKey)
   }
 
-  private def removeLastRecords(count: Int): LimitSizeMapCacheState[K, V] = {
+  private def removeOldItems(count: Int): LimitSizeMapCacheState[K, V] = {
     if (0 < count) {
-      val state = this.removeLastRecord().removeLastRecords(count - 1)
+      val state = this.removeOldItem().removeOldItems(count - 1)
       val bottomKey = state.mayBeBottomKey.get
       val newBottomKey = bottomKey -> state.items(bottomKey).setPrevKey(None)
-      val records = state.items.update(Some(newBottomKey))
-      LimitSizeMapCacheState[K, V](state.maxItemCount, state.itemCountAfterSizeCorrection, records, state.mayBeTopKey, state.mayBeBottomKey)
+      val newItems = state.items.update(Some(newBottomKey))
+      LimitSizeMapCacheState[K, V](state.maxItemCount, state.itemCountAfterSizeCorrection,
+        newItems, state.mayBeTopKey, state.mayBeBottomKey)
     }
     else this.copy()
   }
 
   private def cleanOldItems(): LimitSizeMapCacheState[K, V] = {
-    if (this.maxItemCount < this.items.size) this.removeLastRecords(this.items.size - (0.7 * this.maxItemCount).toInt)
+    //todo: use itemCountAfterSizeCorrection instead of constant scale factor 0.7
+    if (this.maxItemCount < this.items.size) this.removeOldItems(this.items.size - (0.7 * this.maxItemCount).toInt)
     else this.copy()
   }
 }

@@ -8,7 +8,7 @@ import scala.collection.concurrent.TrieMap
 /**
   * [[TrieMap]] with limit size. Not multithread-safe (see [[ImperativeLimitSizeMapCache]]).
  *
-  * @param maxSize - items count after which old records should be cleared
+  * @param maxSize - items count after which old items should be cleared
   * Inner fields description:
   * sizeLimit - verified version of [[maxSize]]
   * cache     - TrieMap[key, (value, Option[nextKey], Option[prevKey])]; nextKey closer to mayBeTopKey; prevKey closer to mayBeBottomKey;
@@ -116,7 +116,7 @@ class LimitSizeTrieMapThreadUnsafe[A, B](private val maxSize: Int) {
 /**
  * [[TrieMap]] with limit size. Multi thread version of [[LimitSizeTrieMapThreadUnsafe]] class.
  *
- * @param maxSize - items count after which old records should be cleared
+ * @param maxSize - items count after which old items should be cleared
  */
 final class ImperativeLimitSizeMapCache[A, B](val maxSize: Int) extends LimitSizeTrieMapThreadUnsafe[A, B](maxSize) {
   val lock = new ReentrantReadWriteLock()
