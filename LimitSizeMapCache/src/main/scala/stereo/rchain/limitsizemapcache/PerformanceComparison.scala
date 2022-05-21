@@ -1,4 +1,9 @@
-package stereo.rchain.mapcache
+/*
+ * Copyright (c) 2020 Aleksei Sivkov.
+ * All rights reserved.
+ */
+
+package stereo.rchain.limitsizemapcache
 
 import cats.effect.Sync
 import cats.syntax.all._
@@ -10,10 +15,10 @@ import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import stereo.rchain.mapcache.cacheImplamentations.{ImperativeLimitSizeMapCache, LimitSizeMapCache, LimitSizeMapCacheState}
+import stereo.rchain.limitsizemapcache.cacheImplamentations.{ImperativeLimitSizeMapCache, LimitSizeMapCache}
 
 
-object CacheExperiments {
+object PerformanceComparison {
 
   case class ExperimentParameters(val maxItemCount: Int,
                                   val itemCountAfterSizeCorrection: Int,
@@ -58,7 +63,7 @@ object CacheExperiments {
   }
 
   class UnlimitedLimitSizeTestCache[F[_]: Sync](val maxItemCount: Int) extends AbstractTestCache[F] {
-    private val pseudoUnlimitedSize = maxItemCount * maxItemCount
+    private val pseudoUnlimitedSize: Int = maxItemCount * maxItemCount
     override val name: String = "UnlimitedLimitSizeMapCache"
     private val cacheRef = LimitSizeMapCache[F, Array[Byte], Int](pseudoUnlimitedSize, pseudoUnlimitedSize)
 
@@ -217,6 +222,14 @@ object CacheExperiments {
   }
 
 
+  /**
+   * [[maxItemCount]] - maximum item count for caches with limit size
+   * [[itemCountAfterSizeCorrection]] - item count for caches with limit size after size correction
+   * [[multiThreadMode]] - if True - perform multy thread experiment; if False - perform single thread experiment
+   * [[experimentCount]] - count of experiment iterations
+   * [[notImportantExperimentsCount]] - count of experiment what needed only for JVM warm up (results will hide)
+   * [[resultDir]] - path to result HTML file's directory
+   */
   def main(args: Array[String]): Unit = {
     val maxItemCount = 1000
     val itemCountAfterSizeCorrection = 700

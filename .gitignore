@@ -18,5 +18,4 @@ project/metals.sbt
 .bloop
 site/Gemfile.lock
 node_modules/
-resultHTML/
-target/
+resultHTML

@@ -1,4 +1,9 @@
-package stereo.rchain.mapcache
+/*
+ * Copyright (c) 2020 Aleksei Sivkov.
+ * All rights reserved.
+ */
+
+package stereo.rchain.limitsizemapcache
 
 sealed trait GoogleVisualizationTemplate {
   def html(dataStringWith2DArray: String, description: String): String

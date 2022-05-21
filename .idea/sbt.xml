@@ -8,7 +8,7 @@
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />
-            <option value="$PROJECT_DIR$/MainObject" />
+            <option value="$PROJECT_DIR$/LimitSizeMapCache" />
             <option value="$PROJECT_DIR$/project" />
           </set>
         </option>

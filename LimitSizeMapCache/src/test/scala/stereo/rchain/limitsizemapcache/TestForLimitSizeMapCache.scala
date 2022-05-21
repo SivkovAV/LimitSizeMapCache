@@ -1,4 +1,4 @@
-package stereo.rchain.mapcache
+package stereo.rchain.limitsizemapcache
 
 import cats.effect.Sync
 import org.scalatest.PrivateMethodTester
@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import cats.syntax.all._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import stereo.rchain.mapcache.cacheImplamentations._
+import stereo.rchain.limitsizemapcache.cacheImplamentations._
 
 
 class LimitSizeMapItemValueSpec extends AnyFlatSpec {

@@ -1,5 +1,7 @@
 # LimitSizeMapCache
 
+[![Build](https://github.com/SivkovAV/LimitSizeMapCache/workflows/build/badge.svg?branch=master)](https://github.com/SivkovAV/LimitSizeMapCache/actions?query=branch%3Amaster+workflow%3Abuild)
+
 ### Overview
 `LimitSizeMapCache` is associative array with a fixed maximum number of items (elements).
 `LimitSizeMapCache` is designed to store the most frequently used items.

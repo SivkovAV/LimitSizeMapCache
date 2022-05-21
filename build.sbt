@@ -1,4 +1,3 @@
-import sbt.Keys.libraryDependencies
 // ---------------------------------------------------------------------------
 // Commands
 
@@ -30,7 +29,7 @@ def defaultPlugins: Project => Project =
 
 lazy val sharedSettings = Seq(
   organization := "RChain",
-  scalaVersion := "2.12.15",
+  scalaVersion := "2.13.3",
 
   headerLicense := Some(
     HeaderLicense.Custom(
@@ -64,18 +63,18 @@ def defaultProjectConfiguration(pr: Project) = {
 
 lazy val root = project
   .in(file("."))
-  .aggregate(MainObject)
-  .dependsOn(MainObject)
+  .aggregate(LimitSizeMapCache)
+  .dependsOn(LimitSizeMapCache)
   .configure(defaultProjectConfiguration)
   .settings(
-    mainClass in (Compile, run) := Some("stereo.rchain.mapcache.Main")
+    mainClass in (Compile, run) := Some("stereo.rchain.limitsizemapcache.Main")
   )
 
-lazy val MainObject = project
-  .in(file("MainObject"))
+lazy val LimitSizeMapCache = project
+  .in(file("LimitSizeMapCache"))
   .configure(defaultProjectConfiguration)
   .settings(
-    name := "MyProjectArtifactId",
+    name := "LimitSizeMapCache",
     libraryDependencies ++= Seq(
       "io.monix" %% "monix" % MonixVersion,
       "org.typelevel" %% "simulacrum" % SimulacrumVersion % Provided,
