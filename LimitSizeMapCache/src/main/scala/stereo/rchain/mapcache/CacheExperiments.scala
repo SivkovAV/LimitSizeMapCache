@@ -1,7 +1,6 @@
 package stereo.rchain.mapcache
 
 import cats.effect.Sync
-import cats.effect.concurrent.Ref
 import cats.syntax.all._
 
 import scala.collection.concurrent.TrieMap

@@ -3,7 +3,6 @@ package stereo.rchain.mapcache
 import cats.effect.Sync
 import org.scalatest.PrivateMethodTester
 import org.scalatest.flatspec.AnyFlatSpec
-import cats.effect.concurrent.Ref
 import cats.syntax.all._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
