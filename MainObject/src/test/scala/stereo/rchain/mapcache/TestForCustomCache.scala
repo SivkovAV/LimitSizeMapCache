@@ -10,13 +10,13 @@ import monix.execution.Scheduler.Implicits.global
 import stereo.rchain.mapcache.cacheImplamentations._
 
 
-class CustomCacheItemSpec extends AnyFlatSpec {
+class LimitSizeMapItemValueSpec extends AnyFlatSpec {
   def checkNextKey(newMayBeNextKey: Option[Int], oldMayBeNextKey: Option[Int]): Unit = {
-    val srcCacheItem = LimitSizeMapItemValue[Int, String](value="this is string value", mayBeNextKey=oldMayBeNextKey, mayBePrevKey=None)
-    val dstCacheItem = srcCacheItem.setNextKey(newMayBeNextKey)
-    assert(srcCacheItem.value == dstCacheItem.value)
-    assert(newMayBeNextKey == dstCacheItem.mayBeNextKey)
-    assert(srcCacheItem.mayBePrevKey == dstCacheItem.mayBePrevKey)
+    val srcItemValue = LimitSizeMapItemValue[Int, String](value="this is string value", mayBeNextKey=oldMayBeNextKey, mayBePrevKey=None)
+    val dstItemValue = srcItemValue.setNextKey(newMayBeNextKey)
+    assert(srcItemValue.value == dstItemValue.value)
+    assert(newMayBeNextKey == dstItemValue.mayBeNextKey)
+    assert(srcItemValue.mayBePrevKey == dstItemValue.mayBePrevKey)
     ()
   }
 
@@ -28,11 +28,11 @@ class CustomCacheItemSpec extends AnyFlatSpec {
   }
 
   def checkPrevKey(newMayBeNextKey: Option[Int], oldMayBeNextKey: Option[Int]): Unit = {
-    val srcCacheItem = LimitSizeMapItemValue[Int, String](value="this is string value", mayBeNextKey=None, mayBePrevKey=oldMayBeNextKey)
-    val dstCacheItem = srcCacheItem.setPrevKey(newMayBeNextKey)
-    assert(srcCacheItem.value == dstCacheItem.value)
-    assert(srcCacheItem.mayBeNextKey == dstCacheItem.mayBeNextKey)
-    assert(newMayBeNextKey == dstCacheItem.mayBePrevKey)
+    val srcItemValue = LimitSizeMapItemValue[Int, String](value="this is string value", mayBeNextKey=None, mayBePrevKey=oldMayBeNextKey)
+    val dstItemValue = srcItemValue.setPrevKey(newMayBeNextKey)
+    assert(srcItemValue.value == dstItemValue.value)
+    assert(srcItemValue.mayBeNextKey == dstItemValue.mayBeNextKey)
+    assert(newMayBeNextKey == dstItemValue.mayBePrevKey)
     ()
   }
 
@@ -45,7 +45,7 @@ class CustomCacheItemSpec extends AnyFlatSpec {
 }
 
 
-class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
+class LimitSizeMapCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
   val cleanOldItemsMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("cleanOldItems"))
   val updateOnTopMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("updateOnTop"))
   val moveItemOnTopMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("moveItemOnTop"))
@@ -140,12 +140,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> LimitSizeMapItemValue[Int, String]("2", Some(0), Some(3)),
       3 -> LimitSizeMapItemValue[Int, String]("3", Some(2), Some(4)),
       4 -> LimitSizeMapItemValue[Int, String]("4", Some(3), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(4))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(4))
 
     val dstState = srcState invokePrivate  moveItemOnTopMethod(1)
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 
   "moveItemOnTop()" should "move central item on top" in {
@@ -166,12 +166,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> LimitSizeMapItemValue[Int, String]("1", Some(0), Some(3)),
       3 -> LimitSizeMapItemValue[Int, String]("3", Some(1), Some(4)),
       4 -> LimitSizeMapItemValue[Int, String]("4", Some(3), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(2), Some(4))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(2), Some(4))
 
     val dstState = srcState invokePrivate  moveItemOnTopMethod(2)
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 
   "moveItemOnTop()" should "move before the bottom item on top" in {
@@ -192,12 +192,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> LimitSizeMapItemValue[Int, String]("1", Some(0), Some(2)),
       2 -> LimitSizeMapItemValue[Int, String]("2", Some(1), Some(4)),
       4 -> LimitSizeMapItemValue[Int, String]("4", Some(2), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(3), Some(4))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(3), Some(4))
 
     val dstState = srcState invokePrivate  moveItemOnTopMethod(3)
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 
   "moveItemOnTop()" should "move bottom item on top" in {
@@ -218,12 +218,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> LimitSizeMapItemValue[Int, String]("1", Some(0), Some(2)),
       2 -> LimitSizeMapItemValue[Int, String]("2", Some(1), Some(3)),
       3 -> LimitSizeMapItemValue[Int, String]("3", Some(2), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(4), Some(3))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(4), Some(3))
 
     val dstState = srcState invokePrivate  moveItemOnTopMethod(4)
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 
   "moveItemOnTop()" should "move bottom item on top in small cache" in {
@@ -238,12 +238,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
     val requiredInnerMap = Map(
       1 -> LimitSizeMapItemValue[Int, String]("1", None, Some(0)),
       0 -> LimitSizeMapItemValue[Int, String]("0", Some(1), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(0))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(0))
 
     val dstState = srcState invokePrivate  moveItemOnTopMethod(1)
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 
   "setValueByKey()" should "modify single LimitSizeMapCacheState item value" in {
@@ -261,12 +261,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
     val requiredInnerMap = Map(
       key1 -> LimitSizeMapItemValue[Int, String](newValue, None, Some(key2)),
       key2 -> LimitSizeMapItemValue[Int, String](key2.toString, Some(key1), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(0), Some(1))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(0), Some(1))
 
     val dstState = srcState invokePrivate setValueByKeyMethod(key1, newValue)
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 
   "updateOnTop()" should "just modify top item" in {
@@ -287,12 +287,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> LimitSizeMapItemValue[Int, String]("2", Some(1), Some(3)),
       3 -> LimitSizeMapItemValue[Int, String]("3", Some(2), Some(4)),
       4 -> LimitSizeMapItemValue[Int, String]("4", Some(3), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(0), Some(4))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(0), Some(4))
 
     val dstState = srcState invokePrivate  updateOnTopMethod(0, "00")
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 
   "updateOnTop()" should "modify and move before the top item on top" in {
@@ -313,12 +313,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> LimitSizeMapItemValue[Int, String]("2", Some(0), Some(3)),
       3 -> LimitSizeMapItemValue[Int, String]("3", Some(2), Some(4)),
       4 -> LimitSizeMapItemValue[Int, String]("4", Some(3), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(4))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(4))
 
     val dstState = srcState invokePrivate  updateOnTopMethod(1, "11")
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 
   "updateOnTop()" should "modify and move central item on top" in {
@@ -339,12 +339,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> LimitSizeMapItemValue[Int, String]("1", Some(0), Some(3)),
       3 -> LimitSizeMapItemValue[Int, String]("3", Some(1), Some(4)),
       4 -> LimitSizeMapItemValue[Int, String]("4", Some(3), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(2), Some(4))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(2), Some(4))
 
     val dstState = srcState invokePrivate  updateOnTopMethod(2, "22")
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 
   "updateOnTop()" should "modify and move before the bottom item on top" in {
@@ -365,12 +365,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> LimitSizeMapItemValue[Int, String]("1", Some(0), Some(2)),
       2 -> LimitSizeMapItemValue[Int, String]("2", Some(1), Some(4)),
       4 -> LimitSizeMapItemValue[Int, String]("4", Some(2), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(3), Some(4))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(3), Some(4))
 
     val dstState = srcState invokePrivate  updateOnTopMethod(3, "33")
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 
   "updateOnTop()" should "modify and move bottom item on top" in {
@@ -391,12 +391,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> LimitSizeMapItemValue[Int, String]("1", Some(0), Some(2)),
       2 -> LimitSizeMapItemValue[Int, String]("2", Some(1), Some(3)),
       3 -> LimitSizeMapItemValue[Int, String]("3", Some(2), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(4), Some(3))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(4), Some(3))
 
     val dstState = srcState invokePrivate  updateOnTopMethod(4, "44")
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 
   "updateOnTop()" should "modify and move bottom item on top in small cache" in {
@@ -411,12 +411,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
     val requiredInnerMap = Map(
       1 -> LimitSizeMapItemValue[Int, String]("11", None, Some(0)),
       0 -> LimitSizeMapItemValue[Int, String]("0", Some(1), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(0))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(1), Some(0))
 
     val dstState = srcState invokePrivate  updateOnTopMethod(1, "11")
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 
   "updateOnTop()" should "add new pair of key->value on top" in {
@@ -432,17 +432,17 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> LimitSizeMapItemValue[Int, String]("2", None, Some(0)),
       0 -> LimitSizeMapItemValue[Int, String]("0", Some(2), Some(1)),
       1 -> LimitSizeMapItemValue[Int, String]("1", Some(0), None))
-    val requiredDstCache = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(2), Some(1))
+    val requiredDstState = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection, requiredInnerMap, Some(2), Some(1))
 
     val dstState = srcState invokePrivate  updateOnTopMethod(2, "2")
 
     assert(dstState != srcState)
-    assert(dstState == requiredDstCache)
+    assert(dstState == requiredDstState)
   }
 }
 
 
-class CustomCacheSpec extends AnyFlatSpec {
+class LimitSizeMapCacheSpec extends AnyFlatSpec {
   "Initialized cache" should "be empty" in {
     def test[F[_] : Sync](): F[Unit] = {
       val maxItemCount = 5
