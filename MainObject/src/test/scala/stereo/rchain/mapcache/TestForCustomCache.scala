@@ -75,7 +75,7 @@ class LimitSizeMapCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
     assert(srcState == dstState)
   }
 
-  "cleanOldItems()" should "clean old items until itemCountAfterSizeCorrection" in {
+  "cleanOldItems()" should "clean old items" in {
     val maxItemCount = 5
     val itemCountAfterSizeCorrection = 3
 
@@ -102,7 +102,30 @@ class LimitSizeMapCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
 
     assert(dstState != srcState)
     assert(dstState == requiredDstState)
-    assert(dstState.items.size == itemCountAfterSizeCorrection)
+  }
+
+  "cleanOldItems()" should "clean old items until itemCountAfterSizeCorrection" in {
+    val maxItemCount = 5
+    val itemCountAfterSizeCorrection1 = 3
+    val itemCountAfterSizeCorrection2 = 2
+    val srcInnerMap = Map(
+      0 -> LimitSizeMapItemValue[Int, String](value="0", None, Some(1)),
+      1 -> LimitSizeMapItemValue[Int, String](value="1", Some(0), Some(2)),
+      2 -> LimitSizeMapItemValue[Int, String](value="2", Some(1), Some(3)),
+      3 -> LimitSizeMapItemValue[Int, String](value="3", Some(2), Some(4)),
+      4 -> LimitSizeMapItemValue[Int, String](value="4", Some(3), Some(5)),
+      5 -> LimitSizeMapItemValue[Int, String](value="5", Some(4), Some(6)),
+      6 -> LimitSizeMapItemValue[Int, String](value="6", Some(5), Some(7)),
+      7 -> LimitSizeMapItemValue[Int, String](value="7", Some(6), Some(8)),
+      8 -> LimitSizeMapItemValue[Int, String](value="8", Some(7), Some(9)),
+      9 -> LimitSizeMapItemValue[Int, String](value="9", Some(8), None))
+    val srcState1 = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection1, srcInnerMap, Some(0), Some(9))
+    val dstState1 = srcState1 invokePrivate cleanOldItemsMethod()
+    val srcState2 = LimitSizeMapCacheState[Int, String](maxItemCount, itemCountAfterSizeCorrection2, srcInnerMap, Some(0), Some(9))
+    val dstState2 = srcState2 invokePrivate cleanOldItemsMethod()
+
+    assert(dstState1.items.size == itemCountAfterSizeCorrection1)
+    assert(dstState2.items.size == itemCountAfterSizeCorrection2)
   }
 
   "moveItemOnTop()" should "not move top item on top (should stay LimitSizeMapCacheState without modifications)" in {

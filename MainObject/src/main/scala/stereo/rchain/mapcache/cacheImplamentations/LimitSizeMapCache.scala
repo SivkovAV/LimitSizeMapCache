@@ -106,9 +106,9 @@ case class LimitSizeMapCacheState[K, V](val maxItemCount: Int, val itemCountAfte
     LimitSizeMapCacheState(maxItemCount, itemCountAfterSizeCorrection, items - key, mayBeTopKey, items(key).mayBeNextKey)
   }
 
-  private def removeOldItems(count: Int): LimitSizeMapCacheState[K, V] = {
-    if (0 < count) {
-      val state = this.removeOldItem().removeOldItems(count - 1)
+  private def removeOldItems(itemCountForRemoving: Int): LimitSizeMapCacheState[K, V] = {
+    if (0 < itemCountForRemoving) {
+      val state = this.removeOldItem().removeOldItems(itemCountForRemoving - 1)
       val bottomKey = state.mayBeBottomKey.get
       val newBottomKey = bottomKey -> state.items(bottomKey).setPrevKey(None)
       val newItems = state.items.update(Some(newBottomKey))
@@ -119,8 +119,7 @@ case class LimitSizeMapCacheState[K, V](val maxItemCount: Int, val itemCountAfte
   }
 
   private def cleanOldItems(): LimitSizeMapCacheState[K, V] = {
-    //todo: use itemCountAfterSizeCorrection instead of constant scale factor 0.7
-    if (this.maxItemCount < this.items.size) this.removeOldItems(this.items.size - (0.7 * this.maxItemCount).toInt)
+    if (this.maxItemCount < this.items.size) this.removeOldItems(this.items.size - itemCountAfterSizeCorrection)
     else this.copy()
   }
 }
