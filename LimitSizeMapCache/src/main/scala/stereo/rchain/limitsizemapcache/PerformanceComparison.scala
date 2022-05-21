@@ -164,8 +164,8 @@ object PerformanceComparison {
     else "singleThread_" + filename
   }
 
-  def getDescription(limitTriaMapSize: Int, multiThreadMode: Boolean): String = {
-    s"""limitTriaMapSize: $limitTriaMapSize; multiThreadMode: $multiThreadMode"""
+  def getDescription(maxItemCount: Int, multiThreadMode: Boolean): String = {
+    s"""maxItemCount: $maxItemCount; multiThreadMode: $multiThreadMode"""
   }
 
   def testReadManyOldItemsOnly[F[_]: Sync](params: ExperimentParameters, fileName: String): F[Unit] = {
