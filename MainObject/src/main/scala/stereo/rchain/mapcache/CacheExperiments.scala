@@ -11,7 +11,7 @@ import scala.concurrent.duration.DurationInt
 import scala.concurrent.{Await, Future}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
-import stereo.rchain.mapcache.cacheImplamentations.{ImperativeCache, CustomCache, CustomCacheState}
+import stereo.rchain.mapcache.cacheImplamentations.{ImperativeLimitSizeMapCache, LimitSizeMapCache, LimitSizeMapCacheState}
 
 
 object CacheExperiments {
@@ -25,7 +25,7 @@ object CacheExperiments {
 
   class ImperativeTestCache[F[_]: Sync](val size: Int) extends AbstractTestCache[F] {
     override val name: String = "ImperativeCache"
-    private val cache = new ImperativeCache[Array[Byte], Int](size)
+    private val cache = new ImperativeLimitSizeMapCache[Array[Byte], Int](size)
 
     override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
 
@@ -44,8 +44,8 @@ object CacheExperiments {
   class CustomTestCache[F[_]: Sync](val size: Int) extends AbstractTestCache[F] {
     override val name: String = "CustomCache"
     private val cacheRef = for {
-      ref <- Ref.of[F, CustomCacheState[Array[Byte], Int]](CustomCacheState[Array[Byte], Int](size))
-      cache = CustomCache(ref)
+      ref <- Ref.of[F, LimitSizeMapCacheState[Array[Byte], Int]](LimitSizeMapCacheState[Array[Byte], Int](size))
+      cache = LimitSizeMapCache(ref)
     } yield(cache)
 
     override def get(key: Array[Byte]): F[Option[Int]] = for {cache <- cacheRef; value <- cache.get(key)} yield(value)
@@ -56,8 +56,8 @@ object CacheExperiments {
   class UnlimitedCustomTestCache[F[_]: Sync](val size: Int) extends AbstractTestCache[F] {
     override val name: String = "UnlimitedCustomCache"
     private val cacheRef = for {
-      ref <- Ref.of[F, CustomCacheState[Array[Byte], Int]](CustomCacheState[Array[Byte], Int](size * size))
-      cache = CustomCache(ref)
+      ref <- Ref.of[F, LimitSizeMapCacheState[Array[Byte], Int]](LimitSizeMapCacheState[Array[Byte], Int](size * size))
+      cache = LimitSizeMapCache(ref)
     } yield(cache)
 
     override def get(key: Array[Byte]): F[Option[Int]] = for {cache <- cacheRef; value <- cache.get(key)} yield(value)

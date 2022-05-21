@@ -48,7 +48,7 @@ class CustomCacheItemSpec extends AnyFlatSpec {
 class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
   "cleanOldRecords()" should "not clean old records in empty cache" in {
     val limitSize = 100
-    val srcCache = CustomCacheState[Int, String](limitSize)
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize)
     val dstCache = srcCache.cleanOldRecords()
     assert(srcCache == dstCache)
   }
@@ -62,7 +62,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, innerMap, Some(0), Some(4))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, innerMap, Some(0), Some(4))
     val dstCache = srcCache.cleanOldRecords()
     assert(srcCache == dstCache)
   }
@@ -82,14 +82,14 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       7 -> CustomCacheItem[Int, String]("7", Some(6), Some(8)),
       8 -> CustomCacheItem[Int, String]("8", Some(7), Some(9)),
       9 -> CustomCacheItem[Int, String]("9", Some(8), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(9))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(9))
 
     // size of requiredInnerMap is (limitSize * reducingFactor).toInt = (5 * 0.7).toInt = 3
     val requiredInnerMap = Map(
       0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
       1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
       2 -> CustomCacheItem[Int, String]("2", Some(1), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(0), Some(2))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(0), Some(2))
 
     val dstCache = srcCache.cleanOldRecords()
 
@@ -107,7 +107,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
 
     val dstCache = srcCache.moveRecordOnTop(0)
 
@@ -124,7 +124,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
       1 -> CustomCacheItem[Int, String]("1", None, Some(0)),
@@ -132,7 +132,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(0), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(4))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(4))
 
     val dstCache = srcCache.moveRecordOnTop(1)
 
@@ -150,7 +150,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
       2 -> CustomCacheItem[Int, String]("2", None, Some(0)),
@@ -158,7 +158,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> CustomCacheItem[Int, String]("1", Some(0), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(1), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(2), Some(4))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(2), Some(4))
 
     val dstCache = srcCache.moveRecordOnTop(2)
 
@@ -176,7 +176,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
       3 -> CustomCacheItem[Int, String]("3", None, Some(0)),
@@ -184,7 +184,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(2), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(3), Some(4))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(3), Some(4))
 
     val dstCache = srcCache.moveRecordOnTop(3)
 
@@ -202,7 +202,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
       4 -> CustomCacheItem[Int, String]("4", None, Some(0)),
@@ -210,7 +210,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(4), Some(3))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(4), Some(3))
 
     val dstCache = srcCache.moveRecordOnTop(key=4)
 
@@ -225,12 +225,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
     val srcInnerMap = Map(
       0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
       1 -> CustomCacheItem[Int, String]("1", Some(0), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(1))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(1))
 
     val requiredInnerMap = Map(
       1 -> CustomCacheItem[Int, String]("1", None, Some(0)),
       0 -> CustomCacheItem[Int, String]("0", Some(1), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(0))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(0))
 
     val dstCache = srcCache.moveRecordOnTop(key=1)
 
@@ -248,14 +248,14 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
     val srcInnerMap = Map(
       key1 -> CustomCacheItem[Int, String](key1.toString, None, Some(key2)),
       key2 -> CustomCacheItem[Int, String](key2.toString, Some(key1), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(key1), Some(1))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(key1), Some(1))
 
     val requiredInnerMap = Map(
       key1 -> CustomCacheItem[Int, String](newValue, None, Some(key2)),
       key2 -> CustomCacheItem[Int, String](key2.toString, Some(key1), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(0), Some(1))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(0), Some(1))
 
-    val setValueByKeyMethod = PrivateMethod[CustomCacheState[Int, String]](methodName = Symbol("setValueByKey"))
+    val setValueByKeyMethod = PrivateMethod[LimitSizeMapCacheState[Int, String]](methodName = Symbol("setValueByKey"))
     val dstCache = srcCache invokePrivate setValueByKeyMethod(key1, newValue)
 
     assert(dstCache != srcCache)
@@ -272,7 +272,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
       0 -> CustomCacheItem[Int, String]("00", None,    Some(1)),
@@ -280,7 +280,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(0), Some(4))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(0), Some(4))
 
     val dstCache = srcCache.updateOnTop(0, "00")
 
@@ -298,7 +298,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
       1 -> CustomCacheItem[Int, String]("11", None, Some(0)),
@@ -306,7 +306,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(0), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(4))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(4))
 
     val dstCache = srcCache.updateOnTop(1, "11")
 
@@ -324,7 +324,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
       2 -> CustomCacheItem[Int, String]("22", None, Some(0)),
@@ -332,7 +332,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> CustomCacheItem[Int, String]("1", Some(0), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(1), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(2), Some(4))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(2), Some(4))
 
     val dstCache = srcCache.updateOnTop(2, "22")
 
@@ -350,7 +350,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
       3 -> CustomCacheItem[Int, String]("33", None, Some(0)),
@@ -358,7 +358,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(2), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(3), Some(4))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(3), Some(4))
 
     val dstCache = srcCache.updateOnTop(3, "33")
 
@@ -376,7 +376,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), Some(4)),
       4 -> CustomCacheItem[Int, String]("4", Some(3), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(4))
 
     val requiredInnerMap = Map(
       4 -> CustomCacheItem[Int, String]("44", None, Some(0)),
@@ -384,7 +384,7 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
       1 -> CustomCacheItem[Int, String]("1", Some(0), Some(2)),
       2 -> CustomCacheItem[Int, String]("2", Some(1), Some(3)),
       3 -> CustomCacheItem[Int, String]("3", Some(2), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(4), Some(3))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(4), Some(3))
 
     val dstCache = srcCache.updateOnTop(key=4, "44")
 
@@ -399,12 +399,12 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
     val srcInnerMap = Map(
       0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
       1 -> CustomCacheItem[Int, String]("1", Some(0), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(1))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(1))
 
     val requiredInnerMap = Map(
       1 -> CustomCacheItem[Int, String]("11", None, Some(0)),
       0 -> CustomCacheItem[Int, String]("0", Some(1), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(0))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(1), Some(0))
 
     val dstCache = srcCache.updateOnTop(key=1, "11")
 
@@ -419,13 +419,13 @@ class CustomCacheStateSpec extends AnyFlatSpec with PrivateMethodTester{
     val srcInnerMap = Map(
       0 -> CustomCacheItem[Int, String]("0", None, Some(1)),
       1 -> CustomCacheItem[Int, String]("1", Some(0), None))
-    val srcCache = CustomCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(1))
+    val srcCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, srcInnerMap, Some(0), Some(1))
 
     val requiredInnerMap = Map(
       2 -> CustomCacheItem[Int, String]("2", None, Some(0)),
       0 -> CustomCacheItem[Int, String]("0", Some(2), Some(1)),
       1 -> CustomCacheItem[Int, String]("1", Some(0), None))
-    val requiredDstCache = CustomCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(2), Some(1))
+    val requiredDstCache = LimitSizeMapCacheState[Int, String](limitSize, reducingFactor, requiredInnerMap, Some(2), Some(1))
 
     val dstCache = srcCache.updateOnTop(key=2, "2")
 
@@ -441,8 +441,8 @@ class CustomCacheSpec extends AnyFlatSpec {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
-        ref <- Ref.of[F, CustomCacheState[Int, String]](CustomCacheState[Int, String](sizeLimit, reducingFactor))
-        cache = CustomCache(ref)
+        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](LimitSizeMapCacheState[Int, String](sizeLimit, reducingFactor))
+        cache = LimitSizeMapCache(ref)
 
         item <- cache.get(0)
         _ = assert(item.isEmpty)
@@ -462,8 +462,8 @@ class CustomCacheSpec extends AnyFlatSpec {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
-        ref <- Ref.of[F, CustomCacheState[Int, String]](CustomCacheState[Int, String](sizeLimit, reducingFactor))
-        cache = CustomCache(ref)
+        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](LimitSizeMapCacheState[Int, String](sizeLimit, reducingFactor))
+        cache = LimitSizeMapCache(ref)
         _ <- cache.set(0, "0")
 
         item0 <- cache.get(0)
@@ -489,8 +489,8 @@ class CustomCacheSpec extends AnyFlatSpec {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
-        ref <- Ref.of[F, CustomCacheState[Int, String]](CustomCacheState[Int, String](sizeLimit, reducingFactor))
-        cache = CustomCache(ref)
+        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](LimitSizeMapCacheState[Int, String](sizeLimit, reducingFactor))
+        cache = LimitSizeMapCache(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
 
@@ -520,8 +520,8 @@ class CustomCacheSpec extends AnyFlatSpec {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
-        ref <- Ref.of[F, CustomCacheState[Int, String]](CustomCacheState[Int, String](sizeLimit, reducingFactor))
-        cache = CustomCache(ref)
+        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](LimitSizeMapCacheState[Int, String](sizeLimit, reducingFactor))
+        cache = LimitSizeMapCache(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
         srcCache <- cache.state.get
@@ -545,8 +545,8 @@ class CustomCacheSpec extends AnyFlatSpec {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
-        ref <- Ref.of[F, CustomCacheState[Int, String]](CustomCacheState[Int, String](sizeLimit, reducingFactor))
-        cache = CustomCache(ref)
+        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](LimitSizeMapCacheState[Int, String](sizeLimit, reducingFactor))
+        cache = LimitSizeMapCache(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
         _ <- cache.set(2, "2")
@@ -570,8 +570,8 @@ class CustomCacheSpec extends AnyFlatSpec {
       val sizeLimit = 5
       val reducingFactor = 0.7
       for {
-        ref <- Ref.of[F, CustomCacheState[Int, String]](CustomCacheState[Int, String](sizeLimit, reducingFactor))
-        cache = CustomCache(ref)
+        ref <- Ref.of[F, LimitSizeMapCacheState[Int, String]](LimitSizeMapCacheState[Int, String](sizeLimit, reducingFactor))
+        cache = LimitSizeMapCache(ref)
         _ <- cache.set(0, "0")
         _ <- cache.set(1, "1")
         _ <- cache.set(2, "2")

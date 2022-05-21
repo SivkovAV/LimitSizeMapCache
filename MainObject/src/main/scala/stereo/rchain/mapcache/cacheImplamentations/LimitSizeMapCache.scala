@@ -24,7 +24,7 @@ case class CustomCacheItem[K, V](value: V, mayBeNextKey: Option[K], mayBePrevKey
 
 
 /**
- * [[CustomCacheState]] is functional style key-value cache. It's like Map with limited size.
+ * [[LimitSizeMapCacheState]] is functional style key-value cache. It's like Map with limited size.
  * If count of cache elements will be more then limited size, several old element will been remove.
  *
  * @param sizeLimit - maximum count of cache elements (limited size)
@@ -33,38 +33,38 @@ case class CustomCacheItem[K, V](value: V, mayBeNextKey: Option[K], mayBePrevKey
  * @param mayBeTopKey - cache top element key or None if cache is empty
  * @param mayBeBottomKey - cache bottom element key or None if cache is empty
  */
-case class CustomCacheState[K, V](val sizeLimit: Int, val reducingFactor: Double = 0.7,
-                                  val records: Map[K, CustomCacheItem[K, V]] = Map.empty[K, CustomCacheItem[K, V]],
-                                  val mayBeTopKey: Option[K] = None,
-                                  val mayBeBottomKey: Option[K] = None) {
+case class LimitSizeMapCacheState[K, V](val sizeLimit: Int, val reducingFactor: Double = 0.7,
+                                        val records: Map[K, CustomCacheItem[K, V]] = Map.empty[K, CustomCacheItem[K, V]],
+                                        val mayBeTopKey: Option[K] = None,
+                                        val mayBeBottomKey: Option[K] = None) {
   class ExtendedMap(state: Map[K, CustomCacheItem[K, V]]) {
     def update(mayBeItem: Option[(K, CustomCacheItem[K, V])]): Map[K, CustomCacheItem[K, V]] =
       mayBeItem.map(item => state + item).getOrElse(state)
   }
   implicit def mapToMap(state: Map[K, CustomCacheItem[K, V]]): ExtendedMap = new ExtendedMap(state)
 
-  def updateOnTop(key: K, value: V): CustomCacheState[K, V] = {
+  def updateOnTop(key: K, value: V): LimitSizeMapCacheState[K, V] = {
     if (!records.contains(key)) addValueByKeyOnTop(key, value)
     else setValueByKey(key, value).moveRecordOnTop(key)
   }
 
-  private def addValueByKeyOnTop(key: K, value: V): CustomCacheState[K, V] = {
+  private def addValueByKeyOnTop(key: K, value: V): LimitSizeMapCacheState[K, V] = {
     val currentRecord = key -> CustomCacheItem(value, None, mayBeTopKey)
     val mayBeTopRecord = for {topKey <- mayBeTopKey; item = topKey -> records(topKey).setNextKey(Some(key))} yield(item)
     val newRecords = (records + currentRecord).update(mayBeTopRecord)
     val newMayBeTopKey = Some(key)
     val newMayBeBottomKey = Some(mayBeBottomKey.getOrElse(key))
-    CustomCacheState(sizeLimit, reducingFactor, newRecords, newMayBeTopKey, newMayBeBottomKey)
+    LimitSizeMapCacheState(sizeLimit, reducingFactor, newRecords, newMayBeTopKey, newMayBeBottomKey)
   }
 
-  private def setValueByKey(key: K, value: V): CustomCacheState[K, V] = {
+  private def setValueByKey(key: K, value: V): LimitSizeMapCacheState[K, V] = {
     val record = records(key)
     val item = key -> CustomCacheItem(value, record.mayBeNextKey, record.mayBePrevKey)
     val newRecords = records + item
-    CustomCacheState(sizeLimit, reducingFactor, newRecords, mayBeTopKey, mayBeBottomKey)
+    LimitSizeMapCacheState(sizeLimit, reducingFactor, newRecords, mayBeTopKey, mayBeBottomKey)
   }
 
-  def moveRecordOnTop(key: K): CustomCacheState[K, V] = {
+  def moveRecordOnTop(key: K): LimitSizeMapCacheState[K, V] = {
     if (mayBeTopKey.isDefined && mayBeTopKey.get==key)
       this
     else {
@@ -82,27 +82,27 @@ case class CustomCacheState[K, V](val sizeLimit: Int, val reducingFactor: Double
       }
       val finalRecords = newRecords.update(mayBeNextRecord).update(mayBePrevRecord)
 
-      CustomCacheState(sizeLimit, reducingFactor, finalRecords, Some(key), newMayBeBottomKey)
+      LimitSizeMapCacheState(sizeLimit, reducingFactor, finalRecords, Some(key), newMayBeBottomKey)
     }
   }
 
-  private def removeLastRecord(): CustomCacheState[K, V] = {
+  private def removeLastRecord(): LimitSizeMapCacheState[K, V] = {
     val key = mayBeBottomKey.get
-    CustomCacheState(sizeLimit, reducingFactor, records - key, mayBeTopKey, records(key).mayBeNextKey)
+    LimitSizeMapCacheState(sizeLimit, reducingFactor, records - key, mayBeTopKey, records(key).mayBeNextKey)
   }
 
-  private def removeLastRecords(count: Int): CustomCacheState[K, V] = {
+  private def removeLastRecords(count: Int): LimitSizeMapCacheState[K, V] = {
     if (0 < count) {
       val state = this.removeLastRecord().removeLastRecords(count - 1)
       val bottomKey = state.mayBeBottomKey.get
       val newBottomKey = bottomKey -> state.records(bottomKey).setPrevKey(None)
       val records = state.records.update(Some(newBottomKey))
-      CustomCacheState[K, V](state.sizeLimit, state.reducingFactor, records, state.mayBeTopKey, state.mayBeBottomKey)
+      LimitSizeMapCacheState[K, V](state.sizeLimit, state.reducingFactor, records, state.mayBeTopKey, state.mayBeBottomKey)
     }
     else this.copy()
   }
 
-  def cleanOldRecords(): CustomCacheState[K, V] = {
+  def cleanOldRecords(): LimitSizeMapCacheState[K, V] = {
     if (this.sizeLimit < this.records.size) this.removeLastRecords(this.records.size - (0.7 * this.sizeLimit).toInt)
     else this.copy()
   }
@@ -110,11 +110,11 @@ case class CustomCacheState[K, V](val sizeLimit: Int, val reducingFactor: Double
 
 
 /**
- * [[CustomCache]] - multi thread version of [[CustomCacheState]]
+ * [[LimitSizeMapCache]] - multi thread version of [[LimitSizeMapCacheState]]
  *
- * @param state - instance of [[CustomCacheState]] covered in cats.Ref for multi thread safety
+ * @param state - instance of [[LimitSizeMapCacheState]] covered in cats.Ref for multi thread safety
  */
-case class CustomCache[F[_]: Sync, K, V](val state: Ref[F, CustomCacheState[K, V]]) {
+case class LimitSizeMapCache[F[_]: Sync, K, V](val state: Ref[F, LimitSizeMapCacheState[K, V]]) {
   def get(key: K): F[Option[V]] = {
     state.modify(state => {
       val mayBeValue = state.records.get(key)
