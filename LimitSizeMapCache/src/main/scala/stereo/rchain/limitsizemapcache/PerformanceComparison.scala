@@ -31,7 +31,7 @@ object PerformanceComparison {
   }
 
   class ImperativeTestCache[F[_]: Sync](val maxItemCount: Int, val itemCountAfterSizeCorrection: Int) extends AbstractTestCache[F] {
-    override val name: String = "ImperativeLimitSizeMapCache"
+    override val name: String = s"""ImperativeLimitSizeMapCache(${maxItemCount};${itemCountAfterSizeCorrection})"""
     private val cache = new ImperativeLimitSizeMapCache[Array[Byte], Int](maxItemCount, itemCountAfterSizeCorrection)
 
     override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
@@ -39,8 +39,8 @@ object PerformanceComparison {
     override def set(key: Array[Byte], value: Int): F[Unit] = cache.set(key, value).pure
   }
 
-  class RegularTrieMapTestCache[F[_]: Sync] extends AbstractTestCache[F] {
-    override val name: String = "RegularTrieMapCache"
+  class TrieMapTestCache[F[_]: Sync] extends AbstractTestCache[F] {
+    override val name: String = "TrieMapCache"
     private val cache = new TrieMap[Array[Byte], Int]
 
     override def get(key: Array[Byte]): F[Option[Int]] = cache.get(key).pure
@@ -49,7 +49,7 @@ object PerformanceComparison {
   }
 
   class LimitSizeTestCache[F[_]: Sync](val maxItemCount: Int, val itemCountAfterSizeCorrection: Int) extends AbstractTestCache[F] {
-    override val name: String = "LimitSizeMapCache"
+    override val name: String = s"""LimitSizeMapCache(${maxItemCount};${itemCountAfterSizeCorrection})"""
     private val cacheRef = LimitSizeMapCache[F, Array[Byte], Int](maxItemCount, itemCountAfterSizeCorrection)
 
     override def get(key: Array[Byte]): F[Option[Int]] = for {cache <- cacheRef; value <- cache.get(key)} yield(value)
@@ -145,7 +145,7 @@ object PerformanceComparison {
 
   def prepareCaches[F[_]: Sync](maxItemCount: Int, itemCountAfterSizeCorrection: Int): F[List[AbstractTestCache[F]]] = {
     List(
-      new RegularTrieMapTestCache,
+      new TrieMapTestCache,
       new ImperativeTestCache(maxItemCount, itemCountAfterSizeCorrection),
       new LimitSizeTestCache[F](maxItemCount, itemCountAfterSizeCorrection),
       new UnlimitedLimitSizeTestCache[F](maxItemCount)
@@ -164,8 +164,11 @@ object PerformanceComparison {
     else "singleThread_" + filename
   }
 
-  def getDescription(maxItemCount: Int, multiThreadMode: Boolean): String = {
-    s"""maxItemCount: $maxItemCount; multiThreadMode: $multiThreadMode"""
+  def getDescription(params: ExperimentParameters): String = {
+    s"""multiThreadMode: ${params.multiThreadMode}; """ +
+    s"""experimentCount=${params.experimentCount}; """ +
+    s"""hiddenResultCountForWarmUpJVM=${params.notImportantExperimentsCount}"""
+      .stripMargin
   }
 
   def testReadManyOldItemsOnly[F[_]: Sync](params: ExperimentParameters, fileName: String): F[Unit] = {
@@ -180,7 +183,7 @@ object PerformanceComparison {
       _ = calculateCachesWorkTime[F](caches, prepareSetEvents(ItemsCount))
       periods = repeat(params.multiThreadMode, params.experimentCount, _ => {calculateCachesWorkTime[F](caches, queue)})
       userPeriods = periods.slice(params.notImportantExperimentsCount, params.experimentCount)
-      description = getDescription(params.maxItemCount, params.multiThreadMode)
+      description = getDescription(params)
       _ = writeLineChartFile(params.resultFileDir, addThreadModeToFilename(fileName, params.multiThreadMode), caches, userPeriods, description)
       //_ = writeBarChartFile(params.resultFileDir, addThreadModeToFilename(fileName, params.multiThreadMode), caches, userPeriods, description)
     } yield()
@@ -198,7 +201,7 @@ object PerformanceComparison {
       _ = calculateCachesWorkTime[F](caches, prepareSetEvents(ItemsCount))
       periods = repeat(params.multiThreadMode, params.experimentCount, (_:Unit) => calculateCachesWorkTime[F](caches, queue))
       userPeriods = periods.slice(params.notImportantExperimentsCount, params.experimentCount)
-      description = getDescription(params.maxItemCount, params.multiThreadMode)
+      description = getDescription(params)
       _ = writeLineChartFile(params.resultFileDir, addThreadModeToFilename(fileName, params.multiThreadMode), caches, userPeriods, description)
       //_ = writeBarChartFile(params.resultFileDir, addThreadModeToFilename(fileName, params.multiThreadMode), caches, userPeriods, description)
     } yield()
@@ -210,7 +213,7 @@ object PerformanceComparison {
       caches <- prepareCaches[F](params.maxItemCount, params.itemCountAfterSizeCorrection)
       periods = repeat(params.multiThreadMode, params.experimentCount, (_:Unit) => {calculateCachesWorkTime[F](caches, prepareSetEvents(params.maxItemCount))})
       userPeriods = periods.slice(params.notImportantExperimentsCount, params.experimentCount)
-      description = getDescription(params.maxItemCount, params.multiThreadMode)
+      description = getDescription(params)
       _ = writeLineChartFile(params.resultFileDir, addThreadModeToFilename(fileName, params.multiThreadMode), caches, userPeriods, description)
       //_ = writeBarChartFile(params.resultFileDir, addThreadModeToFilename(fileName, params.multiThreadMode), caches, userPeriods, description)
     } yield()
@@ -220,7 +223,7 @@ object PerformanceComparison {
   /**
    * [[maxItemCount]] - maximum item count for caches with limit size
    * [[itemCountAfterSizeCorrection]] - item count for caches with limit size after size correction
-   * [[multiThreadMode]] - if True - perform multy thread experiment; if False - perform single thread experiment
+   * [[multiThreadMode]] - if True - perform multi thread experiment; if False - perform single thread experiment
    * [[experimentCount]] - count of experiment iterations
    * [[notImportantExperimentsCount]] - count of experiment what needed only for JVM warm up (results will hide)
    * [[resultDir]] - path to result HTML file's directory
@@ -229,8 +232,8 @@ object PerformanceComparison {
     val maxItemCount = 1000
     val itemCountAfterSizeCorrection = 700
     val multiThreadMode = false
-    val experimentCount = 500
-    val notImportantExperimentsCount = 100
+    val experimentCount = 1
+    val notImportantExperimentsCount = 0
     val resultDir = "./resultHTML"
 
     val parameters = ExperimentParameters(maxItemCount, itemCountAfterSizeCorrection,
