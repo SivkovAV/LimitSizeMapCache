@@ -6,7 +6,7 @@ import cats.syntax.all._
 import scala.collection.concurrent.TrieMap
 import java.io.{File, PrintWriter}
 import java.security.MessageDigest
-import scala.concurrent.duration.DurationInt
+import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
