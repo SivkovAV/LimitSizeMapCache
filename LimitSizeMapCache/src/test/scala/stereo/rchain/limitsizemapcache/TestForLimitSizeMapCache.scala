@@ -614,4 +614,40 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
 
     test[Task]().runSyncUnsafe()
   }
+
+  import cats.implicits._
+  "Cache" should "successfully perform multithread insertions" in {
+    val test: Task[Unit] = {
+      val cacheSize = 1000000
+      val validKeys = (0 until cacheSize).toList
+      val invalidKeys = (-1, cacheSize)
+      for {
+        cache <- LimitSizeMapCache[Task, Int, String](cacheSize, cacheSize)
+
+        _ <- validKeys.map(key => cache.set(key, key.toString)).parSequence
+
+        validValues <- validKeys.traverse(key => cache.get(key))
+        _ = validValues.map(value => assert(value.isDefined))
+        invalidValues <- invalidKeys.traverse(key => cache.get(key))
+        _ = invalidValues.map(value => assert(value.isEmpty))
+      } yield ()
+    }
+    test.runSyncUnsafe()
+  }
+
+  "Cache" should "successfully perform multithread reading" in {
+    val test: Task[Unit] = {
+      val cacheSize = 1000000
+      val validKeys = (0 until cacheSize).toList
+      for {
+        cache <- LimitSizeMapCache[Task, Int, Int](cacheSize, cacheSize)
+        _ <- validKeys.traverse(v => cache.set(v, v))
+
+        values <- validKeys.map(key => cache.get(key)).parSequence
+
+        _ = Sync[Task].delay{values.map(v => assert(v.isDefined))}
+      } yield ()
+    }
+    test.runSyncUnsafe()
+  }
 }

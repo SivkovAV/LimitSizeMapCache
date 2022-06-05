@@ -17,6 +17,7 @@ val ScalaCheckVersion = "1.14.3"
 val KindProjectorVersion = "0.11.0"
 val BetterMonadicForVersion = "0.3.1"
 val SilencerVersion = "1.7.0"
+val ParallelCollectionsVersion = "1.0.4"
 
 /**
   * Defines common plugins between all projects.
@@ -80,6 +81,7 @@ lazy val LimitSizeMapCache = project
       "org.typelevel" %% "simulacrum" % SimulacrumVersion % Provided,
       "org.typelevel" %% "cats-core" % CatsVersion,
       "org.typelevel" %% "cats-effect" % CatsEffectVersion,
+      "org.scala-lang.modules" %% "scala-parallel-collections" % ParallelCollectionsVersion,
       // For testing
       "org.scalatest" %% "scalatest" % ScalaTestVersion % Test,
       "org.scalatestplus" %% "scalacheck-1-14" % ScalaTestPlusVersion % Test,
