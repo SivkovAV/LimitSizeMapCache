@@ -154,7 +154,7 @@ object PerformanceComparison {
 
   def repeat(multiThreadMode: Boolean, experimentCount: Int, process: (Unit) => List[Long]): List[List[Long]] = {
     if (multiThreadMode) {
-      List.fill(experimentCount)(Future{process.apply(())}).map(f => Await.result(f, 1000.seconds))
+      List.fill(experimentCount)(Future{process.apply(())}).map(f => Await.result(f, Duration.Inf))
     }
     else List.fill(experimentCount)(process.apply(()))
   }

@@ -7,6 +7,8 @@ import cats.syntax.all._
 import monix.eval.Task
 import monix.execution.Scheduler.Implicits.global
 import stereo.rchain.limitsizemapcache.cacheImplamentations._
+import scala.concurrent.{Future, Await}
+import scala.concurrent.duration.Duration
 
 
 class LimitSizeMapItemValueSpec extends AnyFlatSpec {
@@ -615,39 +617,31 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
     test[Task]().runSyncUnsafe()
   }
 
-  import cats.implicits._
   "Cache" should "successfully perform multithread insertions" in {
-    val test: Task[Unit] = {
-      val cacheSize = 1000000
-      val validKeys = (0 until cacheSize).toList
-      val invalidKeys = (-1, cacheSize)
-      for {
-        cache <- LimitSizeMapCache[Task, Int, String](cacheSize, cacheSize)
+    import cats.implicits._
+    val cacheSize = 1000000
+    val validKeys = (0 until cacheSize).toList
+    val allKeys = validKeys:::List(-1, cacheSize)
+    val cache = LimitSizeMapCache[Task, Int, String](cacheSize, cacheSize).runSyncUnsafe()
 
-        _ <- validKeys.map(key => cache.set(key, key.toString)).parSequence
+    validKeys.map(key => Future{cache.set(key, key.toString).runSyncUnsafe()}).foreach(f => Await.result(f, Duration.Inf))
 
-        validValues <- validKeys.traverse(key => cache.get(key))
-        _ = validValues.map(value => assert(value.isDefined))
-        invalidValues <- invalidKeys.traverse(key => cache.get(key))
-        _ = invalidValues.map(value => assert(value.isEmpty))
-      } yield ()
-    }
-    test.runSyncUnsafe()
+    val values = allKeys.traverse(key => cache.get(key)).runSyncUnsafe()
+    values.take(cacheSize).map(v => assert(v.isDefined))
+    values.takeRight(2).map(v => assert(v.isEmpty))
   }
 
   "Cache" should "successfully perform multithread reading" in {
-    val test: Task[Unit] = {
-      val cacheSize = 1000000
-      val validKeys = (0 until cacheSize).toList
-      for {
-        cache <- LimitSizeMapCache[Task, Int, Int](cacheSize, cacheSize)
-        _ <- validKeys.traverse(v => cache.set(v, v))
+    import cats.implicits._
+    val cacheSize = 1000000
+    val validKeys = (0 until cacheSize).toList
+    val allKeys = validKeys:::List(-1, cacheSize)
+    val cache = LimitSizeMapCache[Task, Int, Int](cacheSize, cacheSize).runSyncUnsafe()
+    validKeys.traverse(v => cache.set(v, v)).runSyncUnsafe()
 
-        values <- validKeys.map(key => cache.get(key)).parSequence
+    val values = allKeys.map(key => Future{cache.get(key).runSyncUnsafe()}).map(f => Await.result(f, Duration.Inf))
 
-        _ = Sync[Task].delay{values.map(v => assert(v.isDefined))}
-      } yield ()
-    }
-    test.runSyncUnsafe()
+    values.take(cacheSize).map(v => assert(v.isDefined))
+    values.takeRight(2).map(v => assert(v.isEmpty))
   }
 }
