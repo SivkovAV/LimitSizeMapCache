@@ -67,7 +67,7 @@ case class LimitSizeMapCacheState[K, V](
 
   private def addValueByKeyOnTop(key: K, value: V): LimitSizeMapCacheState[K, V] = {
     val currentItem = key -> LimitSizeMapItemValue(value, None, mayBeTopKey)
-    val mayBeTopItem = for { topKey <- mayBeTopKey; item = topKey -> items(topKey).setNextKey(Some(key)) } yield item)
+    val mayBeTopItem = for { topKey <- mayBeTopKey; item = topKey -> items(topKey).setNextKey(Some(key)) } yield item
     val newItems = (items + currentItem).update(mayBeTopItem)
     val newMayBeTopKey = Some(key)
     val newMayBeBottomKey = Some(mayBeBottomKey.getOrElse(key))
@@ -154,8 +154,6 @@ object LimitSizeMapCache {
   def apply[F[_]: Sync, K, V](maxItemCount: Int, itemCountAfterSizeCorrection: Int): F[LimitSizeMapCache[F, K, V]] = {
     assert(maxItemCount >= itemCountAfterSizeCorrection)
     assert(itemCountAfterSizeCorrection >= 0)
-    for {
-      ref <- Ref.of(LimitSizeMapCacheState[K, V](maxItemCount, itemCountAfterSizeCorrection))
-    } yield new LimitSizeMapCache(ref)
+    Ref.of(LimitSizeMapCacheState[K, V](maxItemCount, itemCountAfterSizeCorrection)).map(new LimitSizeMapCache(_))
   }
 }
