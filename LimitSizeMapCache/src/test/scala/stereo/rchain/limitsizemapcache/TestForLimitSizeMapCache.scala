@@ -759,9 +759,9 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
   }
 
   /**
-   * Next function need just for visual proof of multi-threaded work in next unit-tests
-   * @param key - current cache key
-   */
+    * Next function need just for visual proof of multi-threaded work in next unit-tests
+    * @param key - current cache key
+    */
   def printThreadIdAndKey(key: Int): Unit = {
     val threadId = Thread.currentThread().getId()
     println(s"threadId: $threadId    \twrite key: $key")
