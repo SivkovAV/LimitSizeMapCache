@@ -8,9 +8,6 @@ import org.scalatest.PrivateMethodTester
 import org.scalatest.flatspec.AnyFlatSpec
 import stereo.rchain.limitsizemapcache.cacheImplamentations._
 
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, Future}
-
 class LimitSizeMapItemValueSpec extends AnyFlatSpec {
   def checkNextKey(newMayBeNextKey: Option[Int], oldMayBeNextKey: Option[Int]): Unit = {
     val srcItemValue = LimitSizeMapItemValue[Int, String](
@@ -761,16 +758,24 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
     test[Task]().runSyncUnsafe()
   }
 
+  /**
+   * Next function need just for visual proof of multi-threaded work in next unit-tests
+   * @param key - current cache key
+   */
+  def printThreadIdAndKey(key: Int): Unit = {
+    val threadId = Thread.currentThread().getId()
+    println(s"threadId: $threadId    \twrite key: $key")
+  }
+
   "Cache" should "successfully perform multithread insertions" in {
     import cats.implicits._
     val cacheSize = 1000000
     val validKeys = (0 until cacheSize).toList
     val allKeys = validKeys ::: List(-1, cacheSize)
-    val cache = LimitSizeMapCache[Task, Int, String](cacheSize, cacheSize).runSyncUnsafe()
 
-    validKeys
-      .map(key => Future { cache.set(key, key.toString).runSyncUnsafe() })
-      .foreach(f => Await.result(f, Duration.Inf))
+    val cache = LimitSizeMapCache[Task, Int, String](cacheSize, cacheSize).runSyncUnsafe()
+    val tasks = validKeys.map(key => cache.set(key, key.toString) *> Task(printThreadIdAndKey(key)))
+    Task.parSequence(tasks).runSyncUnsafe()
 
     val values = allKeys.traverse(key => cache.get(key)).runSyncUnsafe()
     values.take(cacheSize).map(v => assert(v.isDefined))
@@ -785,7 +790,8 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
     val cache = LimitSizeMapCache[Task, Int, Int](cacheSize, cacheSize).runSyncUnsafe()
     validKeys.traverse(v => cache.set(v, v)).runSyncUnsafe()
 
-    val values = allKeys.map(key => Future { cache.get(key).runSyncUnsafe() }).map(f => Await.result(f, Duration.Inf))
+    val tasks = allKeys.map(key => cache.get(key) <* Task(printThreadIdAndKey(key)))
+    val values = Task.parSequence(tasks).runSyncUnsafe()
 
     values.take(cacheSize).map(v => assert(v.isDefined))
     values.takeRight(2).map(v => assert(v.isEmpty))
