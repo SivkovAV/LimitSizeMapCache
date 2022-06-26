@@ -4,19 +4,17 @@ import java.util.concurrent.locks.ReentrantReadWriteLock
 import scala.annotation.tailrec
 import scala.collection.concurrent.TrieMap
 
-
 /**
   * [[TrieMap]] with limit size. Not multithread-safe (see [[ImperativeLimitSizeMapCache]]).
- *
- * @param maxItemCount - items count after which old items should be cleared
- * @param itemCountAfterSizeCorrection - items count after clearing
- * [[cache]]     - TrieMap[key, (value, Option[nextKey], Option[prevKey])]; nextKey closer to mayBeTopKey; prevKey closer to mayBeBottomKey;
- * [[mayBeTopKey]]    - last read item's key
- * [[mayBeBottomKey]] - most old item's key
- */
+  *
+  * @param maxItemCount - items count after which old items should be cleared
+  * @param itemCountAfterSizeCorrection - items count after clearing
+  * [[cache]]     - TrieMap[key, (value, Option[nextKey], Option[prevKey])]; nextKey closer to mayBeTopKey; prevKey closer to mayBeBottomKey;
+  * [[mayBeTopKey]]    - last read item's key
+  * [[mayBeBottomKey]] - most old item's key
+  */
 @SuppressWarnings(Array("org.wartremover.warts.Var", "org.wartremover.warts.NonUnitStatements"))
-class LimitSizeTrieMapThreadUnsafe[A, B](private val maxItemCount: Int,
-                                         private val itemCountAfterSizeCorrection: Int) {
+class LimitSizeTrieMapThreadUnsafe[A, B](private val maxItemCount: Int, private val itemCountAfterSizeCorrection: Int) {
   private val cache: TrieMap[A, (B, Option[A], Option[A])] = TrieMap.empty[A, (B, Option[A], Option[A])]
   private var mayBeTopKey: Option[A] = None
   private var mayBeBottomKey: Option[A] = None
@@ -79,7 +77,7 @@ class LimitSizeTrieMapThreadUnsafe[A, B](private val maxItemCount: Int,
         mayBeTopKey = Some(key)
         mayBeBottomKey = Some(key)
       } else {
-        val nextBottomKey       = clearOldItems()
+        val nextBottomKey = clearOldItems()
         val (value, _, prevKey) = cache(mayBeTopKey.get)
         cache(mayBeTopKey.get) = (value, Some(key), prevKey)
         mayBeTopKey = Some(key)
@@ -90,9 +88,9 @@ class LimitSizeTrieMapThreadUnsafe[A, B](private val maxItemCount: Int,
 
   @tailrec
   private def prepareOldItems(
-      oldItemsCount: Int,
-      bottomKey: Option[A],
-      currentOldItemsList: List[A]
+    oldItemsCount: Int,
+    bottomKey: Option[A],
+    currentOldItemsList: List[A]
   ): (List[A], Option[A]) =
     if (bottomKey.isEmpty || oldItemsCount == 0)
       (currentOldItemsList, bottomKey)
@@ -111,10 +109,10 @@ class LimitSizeTrieMapThreadUnsafe[A, B](private val maxItemCount: Int,
 }
 
 /**
- * [[TrieMap]] with limit size. Multi thread version of [[LimitSizeTrieMapThreadUnsafe]] class.
- *
- * @param maxItemCount - items count after which old items should be cleared
- */
+  * [[TrieMap]] with limit size. Multi thread version of [[LimitSizeTrieMapThreadUnsafe]] class.
+  *
+  * @param maxItemCount - items count after which old items should be cleared
+  */
 final class ImperativeLimitSizeMapCache[A, B](val maxItemCount: Int, val itemCountAfterSizeCorrection: Int)
   extends LimitSizeTrieMapThreadUnsafe[A, B](maxItemCount, itemCountAfterSizeCorrection) {
   val lock = new ReentrantReadWriteLock()
