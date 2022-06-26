@@ -56,7 +56,7 @@ object PerformanceComparison {
     private val cacheRef = LimitSizeMapCache[F, Array[Byte], Int](maxItemCount, itemCountAfterSizeCorrection)
 
     override def get(key: Array[Byte]): F[Option[Int]] =
-      for { cache <- cacheRef; value <- cache.get(key) } yield (value)
+      for { cache <- cacheRef; value <- cache.get(key) } yield value
 
     override def set(key: Array[Byte], value: Int): F[Unit] =
       for { cache <- cacheRef; _ <- cache.set(key, value) } yield ()
@@ -68,7 +68,7 @@ object PerformanceComparison {
     private val cacheRef = LimitSizeMapCache[F, Array[Byte], Int](pseudoUnlimitedSize, pseudoUnlimitedSize)
 
     override def get(key: Array[Byte]): F[Option[Int]] =
-      for { cache <- cacheRef; value <- cache.get(key) } yield (value)
+      for { cache <- cacheRef; value <- cache.get(key) } yield value
 
     override def set(key: Array[Byte], value: Int): F[Unit] =
       for { cache <- cacheRef; _ <- cache.set(key, value) } yield ()
