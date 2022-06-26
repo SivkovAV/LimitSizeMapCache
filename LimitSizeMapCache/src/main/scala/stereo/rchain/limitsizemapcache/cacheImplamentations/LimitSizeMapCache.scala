@@ -156,7 +156,6 @@ object LimitSizeMapCache {
     assert(itemCountAfterSizeCorrection >= 0)
     for {
       ref <- Ref.of(LimitSizeMapCacheState[K, V](maxItemCount, itemCountAfterSizeCorrection))
-      cache = new LimitSizeMapCache(ref)
-    } yield cache
+    } yield new LimitSizeMapCache(ref)
   }
 }
