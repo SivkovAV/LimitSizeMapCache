@@ -1,5 +1,6 @@
 package stereo.rchain.limitsizemapcache.cacheImplamentations
 
+import cats.Parallel
 import cats.effect.Sync
 import cats.effect.concurrent.Ref
 import cats.syntax.all._
@@ -145,15 +146,25 @@ case class LimitSizeMapCacheState[K, V](
   *
   * @param stateRef - instance of [[LimitSizeMapCacheState]] covered in cats.Ref for multi thread safety
   */
-case class LimitSizeMapCache[F[_]: Sync, K, V](val stateRef: Ref[F, LimitSizeMapCacheState[K, V]]) {
+case class LimitSizeMapCache[F[_]: Sync: Parallel, K, V](val stateRef: Ref[F, LimitSizeMapCacheState[K, V]]) {
   def get(key: K): F[Option[V]] = stateRef.modify(state => state.modify(key))
-  def set(key: K, value: V): F[Unit] = stateRef.update(state => { state.update(key, value) })
+
+  def set(key: K, value: V): F[Unit] =
+    stateRef.update(state => {
+      state.update(key, value)
+    })
 }
 
 object LimitSizeMapCache {
-  def apply[F[_]: Sync, K, V](maxItemCount: Int, itemCountAfterSizeCorrection: Int): F[LimitSizeMapCache[F, K, V]] = {
+  def apply[F[_]: Sync: Parallel, K, V](
+    maxItemCount: Int,
+    itemCountAfterSizeCorrection: Int
+  ): F[LimitSizeMapCache[F, K, V]] = {
     assert(maxItemCount >= itemCountAfterSizeCorrection)
     assert(itemCountAfterSizeCorrection >= 0)
-    Ref.of(LimitSizeMapCacheState[K, V](maxItemCount, itemCountAfterSizeCorrection)).map(new LimitSizeMapCache(_))
+
+    for {
+      stateRef <- Ref[F].of(LimitSizeMapCacheState[K, V](maxItemCount, itemCountAfterSizeCorrection))
+    } yield new LimitSizeMapCache[F, K, V](stateRef)
   }
 }

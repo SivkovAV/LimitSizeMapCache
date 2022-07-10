@@ -1,5 +1,6 @@
 package stereo.rchain.limitsizemapcache
 
+import cats.Parallel
 import cats.effect.Sync
 import cats.syntax.all._
 import monix.eval.Task
@@ -604,7 +605,7 @@ class LimitSizeMapCacheStateSpec extends AnyFlatSpec with PrivateMethodTester {
 
 class LimitSizeMapCacheSpec extends AnyFlatSpec {
   "Initialized cache" should "be empty" in {
-    def test[F[_]: Sync](): F[Unit] = {
+    def test[F[_]: Sync: Parallel](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
       for {
@@ -624,7 +625,7 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
   }
 
   "Cache after 1 call of set()" should "be have 1 item" in {
-    def test[F[_]: Sync](): F[Unit] = {
+    def test[F[_]: Sync: Parallel](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
       for {
@@ -650,7 +651,7 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
   }
 
   "Cache after 2 call of set()" should "be have 2 item" in {
-    def test[F[_]: Sync](): F[Unit] = {
+    def test[F[_]: Sync: Parallel](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
       for {
@@ -680,7 +681,7 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
   }
 
   "Reading exists item from cache" should "modify items order if item is not on top" in {
-    def test[F[_]: Sync](): F[Unit] = {
+    def test[F[_]: Sync: Parallel](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
       for {
@@ -704,7 +705,7 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
   }
 
   "Cache" should "store all added data if size not more then maxItemCount" in {
-    def test[F[_]: Sync](): F[Unit] = {
+    def test[F[_]: Sync: Parallel](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
       for {
@@ -733,7 +734,7 @@ class LimitSizeMapCacheSpec extends AnyFlatSpec {
   }
 
   "Cache" should "decrease inner map size if this size more then maxItemCount" in {
-    def test[F[_]: Sync](): F[Unit] = {
+    def test[F[_]: Sync: Parallel](): F[Unit] = {
       val maxItemCount = 5
       val itemCountAfterSizeCorrection = 3
       for {
