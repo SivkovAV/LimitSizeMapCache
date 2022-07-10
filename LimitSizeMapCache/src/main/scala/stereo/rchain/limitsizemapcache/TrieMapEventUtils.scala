@@ -3,6 +3,7 @@ package stereo.rchain.limitsizemapcache
 import cats.Parallel
 import cats.effect.Sync
 import cats.syntax.all._
+
 import java.security.MessageDigest
 
 object TrieMapEventUtils {

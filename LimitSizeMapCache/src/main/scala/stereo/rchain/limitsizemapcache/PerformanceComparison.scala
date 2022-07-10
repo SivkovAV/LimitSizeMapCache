@@ -11,37 +11,45 @@ import java.io.{File, PrintWriter}
 
 object PerformanceComparison {
 
-  case class ExperimentParameters(val maxItemCount: Int,
-                                  val itemCountAfterSizeCorrection: Int,
-                                  val multiThreadMode: Boolean,
-                                  val experimentCount: Int,
-                                  val jvmWarmingExperimentsCount: Int = 0,  // should be less then experimentCount
-                                  val resultFileDir: String) {}
+  case class ExperimentParameters(
+    val maxItemCount: Int,
+    val itemCountAfterSizeCorrection: Int,
+    val multiThreadMode: Boolean,
+    val experimentCount: Int,
+    val jvmWarmingExperimentsCount: Int = 0, // should be less then experimentCount
+    val resultFileDir: String
+  ) {}
 
-  def processEventsQueue[F[_] : Sync : Parallel](cache: AbstractTestCache[F],
-                                                 eventList: List[TrieMapEvent],
-                                                 multiThreadMode: Boolean
-                                                ): F[Unit] = {
+  def processEventsQueue[F[_]: Sync: Parallel](
+    cache: AbstractTestCache[F],
+    eventList: List[TrieMapEvent],
+    multiThreadMode: Boolean
+  ): F[Unit] = {
     val serialTask = eventList.traverse_(TrieMapEventUtils.prepareEventTask(cache, _))
     val parallelTask = eventList.map(TrieMapEventUtils.prepareEventTask(cache, _)).parSequence_
     parallelTask.whenA(multiThreadMode).orElse(serialTask)
   }
 
-  def calculateCacheWorkTime[F[_] : Sync : Parallel](cache: AbstractTestCache[F],
-                                                     initEventList: List[TrieMapEvent],
-                                                     workEventList: List[TrieMapEvent],
-                                                     multiThreadMode: Boolean): F[Long] =
+  def calculateCacheWorkTime[F[_]: Sync: Parallel](
+    cache: AbstractTestCache[F],
+    initEventList: List[TrieMapEvent],
+    workEventList: List[TrieMapEvent],
+    multiThreadMode: Boolean
+  ): F[Long] =
     for {
       _ <- processEventsQueue(cache, initEventList, multiThreadMode)
       beginTime <- Sync[F].delay(System.nanoTime)
       _ <- processEventsQueue(cache, workEventList, multiThreadMode)
     } yield System.nanoTime - beginTime
 
-  def calculateCachesWorkTime[F[_] : Sync : Parallel](params: ExperimentParameters,
-                                                      initEventList: List[TrieMapEvent],
-                                                      workEventList: List[TrieMapEvent],
-                                                      multiThreadMode: Boolean = true): F[List[Long]] =
-    CachesAggregator().prepareCaches[F](params.maxItemCount, params.itemCountAfterSizeCorrection)
+  def calculateCachesWorkTime[F[_]: Sync: Parallel](
+    params: ExperimentParameters,
+    initEventList: List[TrieMapEvent],
+    workEventList: List[TrieMapEvent],
+    multiThreadMode: Boolean = true
+  ): F[List[Long]] =
+    CachesAggregator()
+      .prepareCaches[F](params.maxItemCount, params.itemCountAfterSizeCorrection)
       .traverse(calculateCacheWorkTime(_, initEventList, workEventList, multiThreadMode))
 
   def writeGoogleVisualizationFile[F[_]: Sync: Parallel](
@@ -123,12 +131,15 @@ object PerformanceComparison {
       s"""experimentCount=${params.experimentCount}; """ +
       s"""hiddenResultCountForWarmUpJVM=${params.jvmWarmingExperimentsCount}""".stripMargin
 
-  def performTest[F[_] : Sync : Parallel](params: ExperimentParameters,
-                                          fileName: String,
-                                          workEventList: List[TrieMapEvent],
-                                          initEventList: List[TrieMapEvent] = List.empty[TrieMapEvent]): F[Unit] = {
+  def performTest[F[_]: Sync: Parallel](
+    params: ExperimentParameters,
+    fileName: String,
+    workEventList: List[TrieMapEvent],
+    initEventList: List[TrieMapEvent] = List.empty[TrieMapEvent]
+  ): F[Unit] = {
     for {
-      results <- repeatCalculations(params.multiThreadMode, params.experimentCount, params, initEventList, workEventList)
+      results <-
+        repeatCalculations(params.multiThreadMode, params.experimentCount, params, initEventList, workEventList)
       userPeriods = results.slice(params.jvmWarmingExperimentsCount, params.experimentCount)
       description = getDescription(params)
       fullFilename = addThreadModeToFilename(fileName, params.multiThreadMode)
@@ -141,41 +152,41 @@ object PerformanceComparison {
   def testReadFromEmptyCacheOneTime[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
     println("testReadExistItemsOneTime")
     val workEventList = TrieMapEventUtils.prepareGetEvents(params.itemCountAfterSizeCorrection, 1)
-    performTest(params,"readOld", workEventList)
+    performTest(params, "readOld", workEventList)
   }
 
   def testReadFromEmptyCacheSeveralTimes[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
     println("testReadExistItemsSeveralTime")
     val workEventList = TrieMapEventUtils.prepareGetEvents(params.itemCountAfterSizeCorrection, 100)
-    performTest(params,"readOld", workEventList)
+    performTest(params, "readOld", workEventList)
   }
 
   def testReadNotExistItemsOneTime[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
     println("testReadExistItemsOneTime")
     val initEventList = TrieMapEventUtils.prepareSetEvents(2 * params.maxItemCount, 1)
     val workEventList = TrieMapEventUtils.prepareGetEvents(params.itemCountAfterSizeCorrection, 1)
-    performTest(params,"readOld", workEventList, initEventList)
+    performTest(params, "readOld", workEventList, initEventList)
   }
 
   def testReadNotExistItemsSeveralTimes[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
     println("testReadExistItemsSeveralTime")
     val initEventList = TrieMapEventUtils.prepareSetEvents(2 * params.maxItemCount, 1)
     val workEventList = TrieMapEventUtils.prepareGetEvents(params.itemCountAfterSizeCorrection, 100)
-    performTest(params,"readOld", workEventList, initEventList)
+    performTest(params, "readOld", workEventList, initEventList)
   }
 
   def testReadExistItemsOneTime[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
     println("testReadExistItemsOneTime")
     val initEventList = TrieMapEventUtils.prepareSetEvents(params.maxItemCount, 1)
     val workEventList = TrieMapEventUtils.prepareGetEvents(params.maxItemCount, 1)
-    performTest(params,"readOld", workEventList, initEventList)
+    performTest(params, "readOld", workEventList, initEventList)
   }
 
   def testReadExistItemsSeveralTimes[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
     println("testReadExistItemsSeveralTime")
     val initEventList = TrieMapEventUtils.prepareSetEvents(params.maxItemCount, 1)
     val workEventList = TrieMapEventUtils.prepareGetEvents(params.maxItemCount, 100)
-    performTest(params,"readOld", workEventList, initEventList)
+    performTest(params, "readOld", workEventList, initEventList)
   }
 
   def testFillOneTime[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
@@ -195,8 +206,8 @@ object PerformanceComparison {
     * [[itemCountAfterSizeCorrection]] - item count for caches with limit size after size correction
     * [[multiThreadMode]] - if True - perform multi thread experiment; if False - perform single thread experiment
     * [[experimentCount]] - count of experiment iterations
-    * [[notImportantExperimentsCount]] - count of experiment what needed only for JVM warm up (results will hide)
-    * [[resultDir]] - path to result HTML file's directory
+    * [[jvmWarmingExperimentsCount]] - count of experiment what needed only for JVM warm up (results will hide)
+    * [[resultFileDir]] - path to result HTML file's directory
     */
   def main(args: Array[String]): Unit = {
     val parameters = ExperimentParameters(
@@ -208,7 +219,6 @@ object PerformanceComparison {
       resultFileDir = "./resultHTML"
     )
 
-    val resultFileDir = parameters.resultFileDir
     println("This program compare performance of LimitSizeCache's implementations and represent results in HTML-files.")
     testReadFromEmptyCacheOneTime[Task](parameters).runSyncUnsafe()
     testReadFromEmptyCacheSeveralTimes[Task](parameters).runSyncUnsafe()
@@ -218,6 +228,6 @@ object PerformanceComparison {
     testReadExistItemsSeveralTimes[Task](parameters).runSyncUnsafe()
     testFillOneTime[Task](parameters).runSyncUnsafe()
     testFillSeveralTimes[Task](parameters).runSyncUnsafe()
-    println(s"""HTML-files with Google Visualization graphics are saved in this path: <$resultFileDir>.""")
+    println("HTML-files with Google Visualization graphics are saved in this path: " + parameters.resultFileDir)
   }
 }

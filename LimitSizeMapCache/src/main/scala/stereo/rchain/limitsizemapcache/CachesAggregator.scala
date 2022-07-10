@@ -4,6 +4,7 @@ import cats.Parallel
 import cats.effect.Sync
 import cats.syntax.all._
 import stereo.rchain.limitsizemapcache.cacheImplamentations.{ImperativeLimitSizeMapCache, LimitSizeMapCache}
+
 import scala.collection.concurrent.TrieMap
 
 object CachesAggregator {
