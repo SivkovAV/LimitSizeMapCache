@@ -119,7 +119,7 @@ object PerformanceComparison {
     initEventList: List[TrieMapEvent],
     workEventList: List[TrieMapEvent]
   ): F[List[List[Long]]] =
-    (0 to experimentCount).toList
+    (0 until experimentCount).toList
       .traverse(_ => calculateCachesWorkTime[F](params, initEventList, workEventList, multiThreadMode))
 
   def addThreadModeToFilename(filename: String, multiThreadMode: Boolean): String =
@@ -150,55 +150,55 @@ object PerformanceComparison {
   }
 
   def testReadFromEmptyCacheOneTime[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
-    println("testReadExistItemsOneTime")
+    println("ReadFromEmptyCacheOneTime")
     val workEventList = TrieMapEventUtils.prepareGetEvents(params.itemCountAfterSizeCorrection, 1)
-    performTest(params, "readOld", workEventList)
+    performTest(params, "ReadFromEmptyCacheOneTime", workEventList)
   }
 
   def testReadFromEmptyCacheSeveralTimes[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
-    println("testReadExistItemsSeveralTime")
+    println("ReadFromEmptyCacheSeveralTimes")
     val workEventList = TrieMapEventUtils.prepareGetEvents(params.itemCountAfterSizeCorrection, 100)
-    performTest(params, "readOld", workEventList)
+    performTest(params, "ReadFromEmptyCacheSeveralTimes", workEventList)
   }
 
   def testReadNotExistItemsOneTime[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
-    println("testReadExistItemsOneTime")
+    println("ReadNotExistNItemsOneTime")
     val initEventList = TrieMapEventUtils.prepareSetEvents(2 * params.maxItemCount, 1)
     val workEventList = TrieMapEventUtils.prepareGetEvents(params.itemCountAfterSizeCorrection, 1)
-    performTest(params, "readOld", workEventList, initEventList)
+    performTest(params, "ReadNotExistNItemsOneTime", workEventList, initEventList)
   }
 
   def testReadNotExistItemsSeveralTimes[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
-    println("testReadExistItemsSeveralTime")
+    println("ReadNotExistItemsSeveralTime")
     val initEventList = TrieMapEventUtils.prepareSetEvents(2 * params.maxItemCount, 1)
     val workEventList = TrieMapEventUtils.prepareGetEvents(params.itemCountAfterSizeCorrection, 100)
-    performTest(params, "readOld", workEventList, initEventList)
+    performTest(params, "ReadNotExistItemsSeveralTime", workEventList, initEventList)
   }
 
   def testReadExistItemsOneTime[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
-    println("testReadExistItemsOneTime")
+    println("ReadExistItemsOneTime")
     val initEventList = TrieMapEventUtils.prepareSetEvents(params.maxItemCount, 1)
     val workEventList = TrieMapEventUtils.prepareGetEvents(params.maxItemCount, 1)
-    performTest(params, "readOld", workEventList, initEventList)
+    performTest(params, "ReadExistItemsOneTime", workEventList, initEventList)
   }
 
   def testReadExistItemsSeveralTimes[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
-    println("testReadExistItemsSeveralTime")
+    println("ReadExistItemsSeveralTime")
     val initEventList = TrieMapEventUtils.prepareSetEvents(params.maxItemCount, 1)
     val workEventList = TrieMapEventUtils.prepareGetEvents(params.maxItemCount, 100)
-    performTest(params, "readOld", workEventList, initEventList)
+    performTest(params, "ReadExistItemsSeveralTime", workEventList, initEventList)
   }
 
   def testFillOneTime[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
-    println("testFillOneTime")
+    println("FillOneTime")
     val workEventList = TrieMapEventUtils.prepareSetEvents(params.maxItemCount, 1)
-    performTest(params, "writeNew", workEventList)
+    performTest(params, "FillOneTime", workEventList)
   }
 
   def testFillSeveralTimes[F[_]: Sync: Parallel](params: ExperimentParameters): F[Unit] = {
-    println("testFillSeveralTimes")
+    println("FillSeveralTimes")
     val workEventList = TrieMapEventUtils.prepareSetEvents(params.maxItemCount, 100)
-    performTest(params, "writeNew", workEventList)
+    performTest(params, "FillSeveralTimes", workEventList)
   }
 
   /**
