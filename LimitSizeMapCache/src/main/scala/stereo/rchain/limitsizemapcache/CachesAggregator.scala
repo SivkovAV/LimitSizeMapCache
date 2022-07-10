@@ -3,6 +3,7 @@ package stereo.rchain.limitsizemapcache
 import cats.Parallel
 import cats.effect.Sync
 import cats.syntax.all._
+import stereo.rchain.limitsizemapcache.PerformanceComparison.ExperimentParameters
 import stereo.rchain.limitsizemapcache.cacheImplamentations.{ImperativeLimitSizeMapCache, LimitSizeMapCache}
 
 import scala.collection.concurrent.TrieMap
@@ -68,6 +69,6 @@ class CachesAggregator {
     )
   }
 
-  def cachesNames[F[_]: Sync: Parallel]: List[String] =
-    prepareCaches(1, 1).map(_.name)
+  def cachesNames[F[_]: Sync: Parallel](params: ExperimentParameters): List[String] =
+    prepareCaches(params.maxItemCount, params.itemCountAfterSizeCorrection).map(_.name)
 }

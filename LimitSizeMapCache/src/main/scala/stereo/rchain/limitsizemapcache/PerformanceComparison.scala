@@ -143,7 +143,7 @@ object PerformanceComparison {
       userPeriods = results.slice(params.jvmWarmingExperimentsCount, params.experimentCount)
       description = getDescription(params)
       fullFilename = addThreadModeToFilename(fileName, params.multiThreadMode)
-      chartSeriesNames = ""::CachesAggregator().cachesNames
+      chartSeriesNames = ""::CachesAggregator().cachesNames(params)
       _ = writeLineChartFile(params.resultFileDir, fullFilename, chartSeriesNames, userPeriods, description)
       //_ = writeBarChartFile(params.resultFileDir, fullFilename, chartSeriesNames, userPeriods, description)
     } yield ()
