@@ -18,7 +18,8 @@ class LineChartTemplate extends GoogleVisualizationTemplate {
       |        var options = {
       |          title: '$description',
       |          curveType: 'function',
-      |          legend: { position: 'bottom' }
+      |          legend: { position: 'bottom' },
+      |          explorer: { maxZoomIn:100, keepInBounds: false, axis: 'horizontal' }
       |        };
       |        var chart = new google.visualization.LineChart(document.getElementById('curve_chart'));
       |        chart.draw(data, options);
