@@ -57,7 +57,7 @@ object PerformanceComparison {
     googleVisualizationTemplate: GoogleVisualizationTemplate,
     resultFileDir: String,
     resultFileName: String,
-    cachesNames: List[String],
+    chartSeriesNames: List[String],
     periods: List[List[Long]],
     description: String
   ): Unit = {
@@ -65,7 +65,7 @@ object PerformanceComparison {
     val directory = new File(resultFileDir)
     if (!directory.exists())
       directory.mkdir()
-    val labels = cachesNames.map("'" + _ + "'")
+    val labels = chartSeriesNames.map("'" + _ + "'")
     val chartSeries = periods.indices.map(i => (i.toLong :: periods(i)).mkString("[", ",", "]")).toList
     val chartData = (labels.mkString("[", ",", "]") :: chartSeries).mkString("[", ",", "]")
 
@@ -79,7 +79,7 @@ object PerformanceComparison {
   def writeLineChartFile[F[_]: Sync: Parallel](
     resultFileDir: String,
     resultFileName: String,
-    cachesNames: List[String],
+    chartSeriesNames: List[String],
     periods: List[List[Long]],
     description: String = "Caches compare"
   ): Unit = {
@@ -88,7 +88,7 @@ object PerformanceComparison {
       new LineChartTemplate,
       resultFileDir,
       resultFileName,
-      cachesNames,
+      chartSeriesNames,
       periods,
       description
     )
@@ -97,7 +97,7 @@ object PerformanceComparison {
   def writeBarChartFile[F[_]: Sync: Parallel](
     resultFileDir: String,
     resultFileName: String,
-    cachesNames: List[String],
+    chartSeriesNames: List[String],
     periods: List[List[Long]],
     description: String = "Caches compare"
   ): Unit = {
@@ -106,7 +106,7 @@ object PerformanceComparison {
       new BarChartTemplate,
       resultFileDir,
       resultFileName,
-      cachesNames,
+      chartSeriesNames,
       periods,
       description
     )
@@ -143,9 +143,9 @@ object PerformanceComparison {
       userPeriods = results.slice(params.jvmWarmingExperimentsCount, params.experimentCount)
       description = getDescription(params)
       fullFilename = addThreadModeToFilename(fileName, params.multiThreadMode)
-      cachesNames = CachesAggregator().cachesNames
-      _ = writeLineChartFile(params.resultFileDir, fullFilename, cachesNames, userPeriods, description)
-      //_ = writeBarChartFile(params.resultFileDir, fullFilename, cachesNames, userPeriods, description)
+      chartSeriesNames = ""::CachesAggregator().cachesNames
+      _ = writeLineChartFile(params.resultFileDir, fullFilename, chartSeriesNames, userPeriods, description)
+      //_ = writeBarChartFile(params.resultFileDir, fullFilename, chartSeriesNames, userPeriods, description)
     } yield ()
   }
 
